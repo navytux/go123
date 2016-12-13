@@ -13,129 +13,128 @@
 package exc
 
 import (
-    "errors"
-    "testing"
+	"errors"
+	"testing"
 
-    "lab.nexedi.com/kirr/go123/myname"
+	"lab.nexedi.com/kirr/go123/myname"
 )
 
 func do_raise1() {
-    Raise(1)
+	Raise(1)
 }
 
 func TestErrRaiseCatch(t *testing.T) {
-    defer Catch(func(e *Error) {
-        if !(e.arg == 1 && e.link == nil) {
-            t.Fatalf("error caught but unexpected: %#v  ; want {1, nil}", e)
-        }
-    })
-    do_raise1()
-    t.Fatal("error not caught")
+	defer Catch(func(e *Error) {
+		if !(e.arg == 1 && e.link == nil) {
+			t.Fatalf("error caught but unexpected: %#v  ; want {1, nil}", e)
+		}
+	})
+	do_raise1()
+	t.Fatal("error not caught")
 }
 
 // verify err chain has .arg(s) as expected
 func verifyErrChain(t *testing.T, e *Error, argv ...interface{}) {
-    i := 0
-    for ; e != nil; i, e = i+1, e.link {
-        if i >= len(argv) {
-            t.Fatal("too long error chain")
-        }
-        if e.arg != argv[i] {
-            t.Fatalf("error caught but unexpected %vth arg: %v  ; want %v", i, e.arg, argv[i])
-        }
-    }
-    if i < len(argv) {
-        t.Fatal("too small error chain")
-    }
+	i := 0
+	for ; e != nil; i, e = i+1, e.link {
+		if i >= len(argv) {
+			t.Fatal("too long error chain")
+		}
+		if e.arg != argv[i] {
+			t.Fatalf("error caught but unexpected %vth arg: %v  ; want %v", i, e.arg, argv[i])
+		}
+	}
+	if i < len(argv) {
+		t.Fatal("too small error chain")
+	}
 }
 
 func do_onunwind1(t *testing.T) {
-    defer Onunwind(func(e *Error) *Error {
-        t.Fatal("on unwind called without raise")
-        return nil
-    })
+	defer Onunwind(func(e *Error) *Error {
+		t.Fatal("on unwind called without raise")
+		return nil
+	})
 }
 
 func do_onunwind2() {
-    defer Onunwind(func(e *Error) *Error {
-        return &Error{2, e}
-    })
-    do_raise1()
+	defer Onunwind(func(e *Error) *Error {
+		return &Error{2, e}
+	})
+	do_raise1()
 }
 
 func TestErrOnUnwind(t *testing.T) {
-    defer Catch(func(e *Error) {
-        verifyErrChain(t, e, 2, 1)
-    })
-    do_onunwind1(t)
-    do_onunwind2()
-    t.Fatal("error not caught")
+	defer Catch(func(e *Error) {
+		verifyErrChain(t, e, 2, 1)
+	})
+	do_onunwind1(t)
+	do_onunwind2()
+	t.Fatal("error not caught")
 }
 
 func do_context1(t *testing.T) {
-    defer Context(func() interface{} {
-        t.Fatal("on context called without raise")
-        return nil
-    })
+	defer Context(func() interface{} {
+		t.Fatal("on context called without raise")
+		return nil
+	})
 }
 
 func do_context2() {
-    defer Context(func() interface{} {
-        return 3
-    })
-    do_raise1()
+	defer Context(func() interface{} {
+		return 3
+	})
+	do_raise1()
 }
 
 func TestErrContext(t *testing.T) {
-    defer Catch(func(e *Error) {
-        verifyErrChain(t, e, 3, 1)
-    })
-    do_context1(t)
-    do_context2()
-    t.Fatal("error not caught")
+	defer Catch(func(e *Error) {
+		verifyErrChain(t, e, 3, 1)
+	})
+	do_context1(t)
+	do_context2()
+	t.Fatal("error not caught")
 }
 
 func do_raise11() {
-    do_raise1()
+	do_raise1()
 }
 
 func do_raise3if() {
-    Raiseif(errors.New("3"))
+	Raiseif(errors.New("3"))
 }
 
 func do_raise3if1() {
-    do_raise3if()
+	do_raise3if()
 }
 
 func do_raise4f() {
-    Raisef("%d", 4)
+	Raisef("%d", 4)
 }
 
 func do_raise4f1() {
-    do_raise4f()
+	do_raise4f()
 }
 
 
 func TestErrAddCallingContext(t *testing.T) {
-    var tests = []struct{ f func(); wanterrcontext string } {
-        {do_raise11,    "do_raise11: do_raise1: 1"},
-        {do_raise3if1,  "do_raise3if1: do_raise3if: 3"},
-        {do_raise4f1,   "do_raise4f1: do_raise4f: 4"},
-    }
+	var tests = []struct { f func(); wanterrcontext string } {
+		{do_raise11,	"do_raise11: do_raise1: 1"},
+		{do_raise3if1,	"do_raise3if1: do_raise3if: 3"},
+		{do_raise4f1,	"do_raise4f1: do_raise4f: 4"},
+	}
 
-    for _, tt := range tests {
-        func() {
-            myfunc := myname.Func()
-            defer Catch(func(e *Error) {
-                e = Addcallingcontext(myfunc, e)
-                msg := e.Error()
-                if msg != tt.wanterrcontext {
-                    t.Fatalf("err + calling context: %q  ; want %q", msg, tt.wanterrcontext)
-                }
-            })
-            tt.f()
-            t.Fatal("error not caught")
-        }()
-    }
-
+	for _, tt := range tests {
+		func() {
+			myfunc := myname.Func()
+			defer Catch(func(e *Error) {
+				e = Addcallingcontext(myfunc, e)
+				msg := e.Error()
+				if msg != tt.wanterrcontext {
+					t.Fatalf("err + calling context: %q  ; want %q", msg, tt.wanterrcontext)
+				}
+			})
+			tt.f()
+			t.Fatal("error not caught")
+		}()
+	}
 }

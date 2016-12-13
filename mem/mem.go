@@ -14,25 +14,25 @@
 package mem
 
 import (
-    "reflect"
-    "unsafe"
+	"reflect"
+	"unsafe"
 )
 
 // string -> []byte without copying
 func Bytes(s string) []byte {
-    var b []byte
-    bp := (*reflect.SliceHeader)(unsafe.Pointer(&b))
-    bp.Data = (*reflect.StringHeader)(unsafe.Pointer(&s)).Data
-    bp.Cap = len(s)
-    bp.Len = len(s)
-    return b
+	var b []byte
+	bp := (*reflect.SliceHeader)(unsafe.Pointer(&b))
+	bp.Data = (*reflect.StringHeader)(unsafe.Pointer(&s)).Data
+	bp.Cap = len(s)
+	bp.Len = len(s)
+	return b
 }
 
 // []byte -> string without copying
 func String(b []byte) string {
-    var s string
-    sp := (*reflect.StringHeader)(unsafe.Pointer(&s))
-    sp.Data = (*reflect.SliceHeader)(unsafe.Pointer(&b)).Data
-    sp.Len = len(b)
-    return s
+	var s string
+	sp := (*reflect.StringHeader)(unsafe.Pointer(&s))
+	sp.Data = (*reflect.SliceHeader)(unsafe.Pointer(&b)).Data
+	sp.Len = len(b)
+	return s
 }

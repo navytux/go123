@@ -13,16 +13,16 @@
 package myname
 
 import (
-    "strings"
-    "testing"
+	"strings"
+	"testing"
 )
 
 func TestMyFuncName(t *testing.T) {
-    myfunc := Func()
-    // go test changes full package name (putting filesystem of the tree into ti)
-    // thus we check only for suffix
-    wantsuffix := ".TestMyFuncName"
-    if !strings.HasSuffix(myfunc, wantsuffix) {
-        t.Errorf("myname.Func() -> %v  ; want *%v", myfunc, wantsuffix)
-    }
+	myfunc := Func()
+	// go test changes full package name (putting filesystem of the tree into ti)
+	// thus we check only for suffix
+	wantsuffix := ".TestMyFuncName"
+	if !strings.HasSuffix(myfunc, wantsuffix) {
+		t.Errorf("myname.Func() -> %v  ; want *%v", myfunc, wantsuffix)
+	}
 }

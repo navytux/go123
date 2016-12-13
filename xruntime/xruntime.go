@@ -14,44 +14,44 @@
 package xruntime
 
 import (
-    "runtime"
+	"runtime"
 )
 
 // TODO(go1.7) goes away in favour of runtime.Frame
 type Frame struct {
-    *runtime.Func
-    Pc  uintptr
+	*runtime.Func
+	Pc uintptr
 }
 
 // get current calling traceback as []Frame
 // nskip meaning: the same as in runtime.Callers()
 // TODO(go1.7) []Frame -> []runtime.Frame
 func Traceback(nskip int) []Frame {
-    // all callers
-    var pcv = []uintptr{0}
-    for {
-        pcv = make([]uintptr, 2*len(pcv))
-        n := runtime.Callers(nskip+1, pcv)
-        if n < len(pcv) {
-            pcv = pcv[:n]
-            break
-        }
-    }
+	// all callers
+	var pcv = []uintptr{0}
+	for {
+		pcv = make([]uintptr, 2*len(pcv))
+		n := runtime.Callers(nskip+1, pcv)
+		if n < len(pcv) {
+			pcv = pcv[:n]
+			break
+		}
+	}
 
-    // pcv -> frames
+	// pcv -> frames
 /*
-    framev := make([]runtime.Frame, 0, len(pcv))
-    frames := runtime.CallersFrames(pcv)
-    for more := true; more; {
-        var frame runtime.Frame
-        frame, more = frames.Next()
-        framev = append(framev, frame)
-    }
+	framev := make([]runtime.Frame, 0, len(pcv))
+	frames := runtime.CallersFrames(pcv)
+	for more := true; more; {
+		var frame runtime.Frame
+		frame, more = frames.Next()
+		framev = append(framev, frame)
+	}
 */
-    framev := make([]Frame, 0, len(pcv))
-    for _, pc := range pcv {
-        framev = append(framev, Frame{runtime.FuncForPC(pc), pc})
-    }
+	framev := make([]Frame, 0, len(pcv))
+	for _, pc := range pcv {
+		framev = append(framev, Frame{runtime.FuncForPC(pc), pc})
+	}
 
-    return framev
+	return framev
 }
