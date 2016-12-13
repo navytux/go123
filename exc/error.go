@@ -177,18 +177,3 @@ func erraddcallingcontext(topfunc string, e *Error) *Error {
 
     return e
 }
-
-// error merging multiple errors (e.g. after collecting them from several parallel workers)
-type Errorv []error
-
-func (ev Errorv) Error() string {
-    if len(ev) == 1 {
-        return ev[0].Error()
-    }
-
-    msg := fmt.Sprintf("%d errors:\n", len(ev))
-    for _, e := range ev {
-        msg += fmt.Sprintf("\t- %s\n", e)
-    }
-    return msg
-}
