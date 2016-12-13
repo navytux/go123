@@ -10,7 +10,7 @@
 //
 // See COPYING file for full licensing terms.
 
-package main
+package exc
 
 import (
     "errors"
@@ -20,11 +20,11 @@ import (
 )
 
 func do_raise1() {
-    raise(1)
+    Raise(1)
 }
 
 func TestErrRaiseCatch(t *testing.T) {
-    defer errcatch(func(e *Error) {
+    defer Catch(func(e *Error) {
         if !(e.arg == 1 && e.link == nil) {
             t.Fatalf("error caught but unexpected: %#v  ; want {1, nil}", e)
         }
@@ -50,21 +50,21 @@ func verifyErrChain(t *testing.T, e *Error, argv ...interface{}) {
 }
 
 func do_onunwind1(t *testing.T) {
-    defer erronunwind(func(e *Error) *Error {
+    defer Onunwind(func(e *Error) *Error {
         t.Fatal("on unwind called without raise")
         return nil
     })
 }
 
 func do_onunwind2() {
-    defer erronunwind(func(e *Error) *Error {
+    defer Onunwind(func(e *Error) *Error {
         return &Error{2, e}
     })
     do_raise1()
 }
 
 func TestErrOnUnwind(t *testing.T) {
-    defer errcatch(func(e *Error) {
+    defer Catch(func(e *Error) {
         verifyErrChain(t, e, 2, 1)
     })
     do_onunwind1(t)
@@ -73,21 +73,21 @@ func TestErrOnUnwind(t *testing.T) {
 }
 
 func do_context1(t *testing.T) {
-    defer errcontext(func() interface{} {
+    defer Context(func() interface{} {
         t.Fatal("on context called without raise")
         return nil
     })
 }
 
 func do_context2() {
-    defer errcontext(func() interface{} {
+    defer Context(func() interface{} {
         return 3
     })
     do_raise1()
 }
 
 func TestErrContext(t *testing.T) {
-    defer errcatch(func(e *Error) {
+    defer Catch(func(e *Error) {
         verifyErrChain(t, e, 3, 1)
     })
     do_context1(t)
@@ -100,7 +100,7 @@ func do_raise11() {
 }
 
 func do_raise3if() {
-    raiseif(errors.New("3"))
+    Raiseif(errors.New("3"))
 }
 
 func do_raise3if1() {
@@ -108,7 +108,7 @@ func do_raise3if1() {
 }
 
 func do_raise4f() {
-    raisef("%d", 4)
+    Raisef("%d", 4)
 }
 
 func do_raise4f1() {
@@ -126,8 +126,8 @@ func TestErrAddCallingContext(t *testing.T) {
     for _, tt := range tests {
         func() {
             myfunc := myname.Func()
-            defer errcatch(func(e *Error) {
-                e = erraddcallingcontext(myfunc, e)
+            defer Catch(func(e *Error) {
+                e = Addcallingcontext(myfunc, e)
                 msg := e.Error()
                 if msg != tt.wanterrcontext {
                     t.Fatalf("err + calling context: %q  ; want %q", msg, tt.wanterrcontext)

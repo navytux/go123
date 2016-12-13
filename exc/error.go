@@ -10,8 +10,8 @@
 //
 // See COPYING file for full licensing terms.
 
-// Git-backup | Exception-style errors
-package main
+// Package exc provides exception-style error handling for Go
+package exc
 
 import (
     "fmt"
@@ -21,10 +21,10 @@ import (
     "lab.nexedi.com/kirr/go123/xruntime"
 )
 
-// error type which is raised by raise(arg)
+// error type which is raised by Raise(arg)
 type Error struct {
     arg  interface{}
-    link *Error // chain of linked Error(s) - see e.g. errcontext()
+    link *Error // chain of linked Error(s) - see e.g. Context()
 }
 
 func (e *Error) Error() string {
@@ -49,7 +49,7 @@ func (e *Error) Error() string {
 // turn any value into Error
 // if v is already Error - it stays the same
 // otherwise new Error is created
-func aserror(v interface{}) *Error {
+func Aserror(v interface{}) *Error {
     if e, ok := v.(*Error); ok {
         return e
     }
@@ -57,13 +57,13 @@ func aserror(v interface{}) *Error {
 }
 
 // raise error to upper level
-func raise(arg interface{}) {
-    panic(aserror(arg))
+func Raise(arg interface{}) {
+    panic(Aserror(arg))
 }
 
 // raise formatted string
-func raisef(format string, a ...interface{}) {
-    panic(aserror(fmt.Sprintf(format, a...)))
+func Raisef(format string, a ...interface{}) {
+    panic(Aserror(fmt.Sprintf(format, a...)))
 }
 
 // raise if err != nil
@@ -71,10 +71,10 @@ func raisef(format string, a ...interface{}) {
 //   var obj *T;
 //   err = obj
 //   err != nil     is true
-func raiseif(err error) {
+func Raiseif(err error) {
     //if err != nil && !reflect.ValueOf(err).IsNil() {
     if err != nil {
-        panic(aserror(err))
+        panic(Aserror(err))
     }
 }
 
@@ -91,7 +91,7 @@ func _errcatch(r interface{}) *Error {
 
 // catch error and call f(e) if it was caught.
 // must be called under defer
-func errcatch(f func(e *Error)) {
+func Catch(f func(e *Error)) {
     e := _errcatch(recover())
     if e == nil {
         return
@@ -102,10 +102,10 @@ func errcatch(f func(e *Error)) {
 
 // be notified when error unwinding is being happening.
 // hook into unwinding process with f() call. Returned error is reraised.
-// see also: errcontext()
+// see also: Context()
 // must be called under defer
-func erronunwind(f func(e *Error) *Error) {
-    // cannot do errcatch(...)
+func Onunwind(f func(e *Error) *Error) {
+    // cannot do Catch(...)
     // as recover() works only in first-level called functions
     e := _errcatch(recover())
     if e == nil {
@@ -120,37 +120,37 @@ func erronunwind(f func(e *Error) *Error) {
 // f is called if error unwinding is happening.
 // call result is added to raised error as "prefix" context
 // must be called under defer
-func errcontext(f func() interface{}) {
+func Context(f func() interface{}) {
     e := _errcatch(recover())
     if e == nil {
         return
     }
 
     arg := f()
-    panic(erraddcontext(e, arg))
+    panic(Addcontext(e, arg))
 }
 
 // add "prefix" context to error
-func erraddcontext(e *Error, arg interface{}) *Error {
+func Addcontext(e *Error, arg interface{}) *Error {
     return &Error{arg, e}
 }
 
 var (
     _errorpkgname string // package name under which error.go lives
     _errorpkgdot  string // errorpkg.
-    _errorraise   string // errorpkg.raise
+    _errorraise   string // errorpkg.Raise
 )
 
 func init() {
     _errorpkgname = myname.Pkg()
     _errorpkgdot  = _errorpkgname + "."
-    _errorraise   = _errorpkgname + ".raise"
+    _errorraise   = _errorpkgname + ".Raise"
 }
 
 // add calling context to error.
 // Add calling function names as error context up-to topfunc not including.
-// see also: erraddcontext()
-func erraddcallingcontext(topfunc string, e *Error) *Error {
+// see also: Addcontext()
+func Addcallingcontext(topfunc string, e *Error) *Error {
     seenraise := false
     for _, f := range xruntime.Traceback(2) {
         // do not show anything after raise*()
