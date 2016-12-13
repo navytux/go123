@@ -14,8 +14,9 @@ package main
 
 import (
     "errors"
-    "strings"
     "testing"
+
+    "lab.nexedi.com/kirr/go123/myname"
 )
 
 func do_raise1() {
@@ -94,16 +95,6 @@ func TestErrContext(t *testing.T) {
     t.Fatal("error not caught")
 }
 
-func TestMyFuncName(t *testing.T) {
-    myfunc := myfuncname()
-    // go test changes full package name (putting filesystem of the tree into ti)
-    // thus we check only for suffix
-    wantsuffix := ".TestMyFuncName"
-    if !strings.HasSuffix(myfunc, wantsuffix) {
-        t.Errorf("myfuncname() -> %v  ; want *%v", myfunc, wantsuffix)
-    }
-}
-
 func do_raise11() {
     do_raise1()
 }
@@ -134,7 +125,7 @@ func TestErrAddCallingContext(t *testing.T) {
 
     for _, tt := range tests {
         func() {
-            myfunc := myfuncname()
+            myfunc := myname.Func()
             defer errcatch(func(e *Error) {
                 e = erraddcallingcontext(myfunc, e)
                 msg := e.Error()
