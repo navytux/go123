@@ -15,10 +15,10 @@ package main
 
 import (
     "fmt"
-    "runtime"
     "strings"
 
     "lab.nexedi.com/kirr/go123/myname"
+    "lab.nexedi.com/kirr/go123/xruntime"
 )
 
 // error type which is raised by raise(arg)
@@ -31,8 +31,8 @@ func (e *Error) Error() string {
     msgv := []string{}
     msg := ""
     for e != nil {
-        // TODO(go1.7) -> runtime.Frame  (see xtraceback())
-        if f, ok := e.arg.(Frame); ok {
+        // TODO(go1.7) -> runtime.Frame  (see xruntime.Traceback())
+        if f, ok := e.arg.(xruntime.Frame); ok {
             //msg = f.Function
             //msg = fmt.Sprintf("%s (%s:%d)", f.Function, f.File, f.Line)
             msg = strings.TrimPrefix(f.Name(), _errorpkgdot) // XXX -> better prettyfunc
@@ -135,45 +135,6 @@ func erraddcontext(e *Error, arg interface{}) *Error {
     return &Error{arg, e}
 }
 
-// TODO(go1.7) goes away in favour of runtime.Frame
-type Frame struct {
-    *runtime.Func
-    pc  uintptr
-}
-
-// get current calling traceback as []Frame
-// nskip meaning: the same as in runtime.Callers()
-// TODO(go1.7) []Frame -> []runtime.Frame
-func xtraceback(nskip int) []Frame {
-    // all callers
-    var pcv = []uintptr{0}
-    for {
-        pcv = make([]uintptr, 2*len(pcv))
-        n := runtime.Callers(nskip+1, pcv)
-        if n < len(pcv) {
-            pcv = pcv[:n]
-            break
-        }
-    }
-
-    // pcv -> frames
-/*
-    framev := make([]runtime.Frame, 0, len(pcv))
-    frames := runtime.CallersFrames(pcv)
-    for more := true; more; {
-        var frame runtime.Frame
-        frame, more = frames.Next()
-        framev = append(framev, frame)
-    }
-*/
-    framev := make([]Frame, 0, len(pcv))
-    for _, pc := range pcv {
-        framev = append(framev, Frame{runtime.FuncForPC(pc), pc})
-    }
-
-    return framev
-}
-
 var (
     _errorpkgname string // package name under which error.go lives
     _errorpkgdot  string // errorpkg.
@@ -191,7 +152,7 @@ func init() {
 // see also: erraddcontext()
 func erraddcallingcontext(topfunc string, e *Error) *Error {
     seenraise := false
-    for _, f := range xtraceback(2) {
+    for _, f := range xruntime.Traceback(2) {
         // do not show anything after raise*()
         if !seenraise && strings.HasPrefix(f.Name(), _errorraise) {
             seenraise = true
