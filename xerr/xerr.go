@@ -20,13 +20,13 @@ import (
 // error merging multiple errors (e.g. after collecting them from several parallel workers)
 type Errorv []error
 
-func (ev Errorv) Error() string {
-	if len(ev) == 1 {
-		return ev[0].Error()
+func (errv Errorv) Error() string {
+	if len(errv) == 1 {
+		return errv[0].Error()
 	}
 
-	msg := fmt.Sprintf("%d errors:\n", len(ev))
-	for _, e := range ev {
+	msg := fmt.Sprintf("%d errors:\n", len(errv))
+	for _, e := range errv {
 		msg += fmt.Sprintf("\t- %s\n", e)
 	}
 	return msg
