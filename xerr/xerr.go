@@ -31,3 +31,36 @@ func (errv Errorv) Error() string {
 	}
 	return msg
 }
+
+// append err to error vector
+func (errv *Errorv) Append(err error) {
+	*errv = append(*errv, err)
+}
+
+// append err to error vector, but only if err != nil
+func (errv *Errorv) Appendif(err error) {
+	if err == nil {
+		return
+	}
+	errv.Append(err)
+}
+
+// append formatted error string
+func (errv *Errorv) Appendf(format string, a ...interface{}) {
+	errv.Append(fmt.Errorf(format, a...))
+}
+
+// Err returns error in canonical form accumulated in error vector
+// - nil	if len(errv)==0
+// - errv[0]	if len(errv)==1		// XXX is this good idea?
+// - errv	otherwise
+func (errv Errorv) Err() error {
+	switch len(errv) {
+	case 0:
+		return nil
+	case 1:
+		return errv[0]
+	default:
+		return errv
+	}
+}
