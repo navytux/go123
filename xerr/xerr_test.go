@@ -32,6 +32,8 @@ func TestErrorv(t *testing.T) {
 		}
 	}
 
+	check(nil, "")
+
 	err1 := errors.New("err1")
 	err2 := errors.New("err2")
 

@@ -21,7 +21,10 @@ import (
 type Errorv []error
 
 func (errv Errorv) Error() string {
-	if len(errv) == 1 {
+	switch len(errv) {
+	case 0:
+		return ""
+	case 1:
 		return errv[0].Error()
 	}
 
