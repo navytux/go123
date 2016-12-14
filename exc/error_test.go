@@ -146,3 +146,24 @@ func TestErrAddCallingContext(t *testing.T) {
 		}()
 	}
 }
+
+func TestRunx(t *testing.T) {
+	var tests = []struct { f func(); wanterr string } {
+		{func() {},	""},
+		{do_raise11,	"do_raise11: do_raise1: 1"},
+	}
+
+	for _, tt := range tests {
+		err := Runx(tt.f)
+		if err == nil {
+			if tt.wanterr != "" {
+				t.Errorf("runx(%v) -> nil  ; want %q error", funcname(tt.f), tt.wanterr)
+			}
+			continue
+		}
+		msg := err.Error()
+		if msg != tt.wanterr {
+			t.Errorf("runx(%v) -> %q  ; want %q", funcname(tt.f), msg, tt.wanterr)
+		}
+	}
+}

@@ -177,3 +177,16 @@ func Addcallingcontext(topfunc string, e *Error) *Error {
 
 	return e
 }
+
+// run a function which raises exception, and return exception as regular error, if any.
+// the error, if non-nil, will be returned with added calling context - see
+// Addcallingcontext for details.
+func Runx(xf func()) (err error) {
+	here := myname.Func()
+	defer Catch(func(e *Error) {
+		err = Addcallingcontext(here, e)
+	})
+
+	xf()
+	return
+}
