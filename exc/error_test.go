@@ -14,6 +14,8 @@ package exc
 
 import (
 	"errors"
+	"reflect"
+	"runtime"
 	"testing"
 
 	"lab.nexedi.com/kirr/go123/myname"
@@ -115,6 +117,12 @@ func do_raise4f1() {
 	do_raise4f()
 }
 
+// get name of a function
+func funcname(f interface{}) string {
+	fentry := reflect.ValueOf(f).Pointer()
+	ffunc := runtime.FuncForPC(fentry)
+	return ffunc.Name()
+}
 
 func TestErrAddCallingContext(t *testing.T) {
 	var tests = []struct { f func(); wanterrcontext string } {
@@ -130,11 +138,11 @@ func TestErrAddCallingContext(t *testing.T) {
 				e = Addcallingcontext(myfunc, e)
 				msg := e.Error()
 				if msg != tt.wanterrcontext {
-					t.Fatalf("err + calling context: %q  ; want %q", msg, tt.wanterrcontext)
+					t.Fatalf("%v: err + calling context: %q  ; want %q", funcname(tt.f), msg, tt.wanterrcontext)
 				}
 			})
 			tt.f()
-			t.Fatal("error not caught")
+			t.Fatalf("%v: error not caught", funcname(tt.f))
 		}()
 	}
 }
