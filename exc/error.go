@@ -148,7 +148,7 @@ func init() {
 }
 
 // add calling context to error.
-// Add calling function names as error context up-to topfunc not including.
+// Add calling function frames as error context up-to topfunc not including.
 // see also: Addcontext()
 func Addcallingcontext(topfunc string, e *Error) *Error {
 	seenraise := false
