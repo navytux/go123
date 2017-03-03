@@ -167,3 +167,24 @@ func TestRunx(t *testing.T) {
 		}
 	}
 }
+
+func TestXRun(t *testing.T) {
+	var tests = []struct { f func() error; wanterr string } {
+		{func() error { return nil },			""},
+		{func() error { return errors.New("abc") },	"X abc"},
+	}
+
+	for _, tt := range tests {
+		errStr := ""
+		func() {
+			defer Catch(func(e *Error) {
+				errStr = "X " + e.Error()
+			})
+			XRun(tt.f)
+		}()
+
+		if errStr != tt.wanterr {
+			t.Errorf("xrun(%v) -> %q  ; want %q", funcname(tt.f), errStr, tt.wanterr)
+		}
+	}
+}

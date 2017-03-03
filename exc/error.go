@@ -190,3 +190,9 @@ func Runx(xf func()) (err error) {
 	xf()
 	return
 }
+
+// run a function which returns regular error, and raise exception if error is not nil.
+func XRun(f func() error) {
+	err := f()
+	Raiseif(err)
+}
