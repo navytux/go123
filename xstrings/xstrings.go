@@ -10,7 +10,7 @@
 //
 // See COPYING file for full licensing terms.
 
-// Package provides addons to standard package strings
+// Package xstrings provides addons to standard package strings
 package xstrings
 
 import (
