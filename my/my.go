@@ -24,29 +24,29 @@ import (
 	"strings"
 )
 
-func _myfuncname(nskip int) string {
+func _myframe(nskip int) runtime.Frame {
 	pcv := [1]uintptr{}
-	runtime.Callers(nskip, pcv[:])
-	f := runtime.FuncForPC(pcv[0])
-	if f == nil {
-		return ""
+	n := runtime.Callers(nskip, pcv[:])
+	if n != 1 {
+		panic("error determining caller")
 	}
-	return f.Name()
+	frameit := runtime.CallersFrames(pcv[:])
+	f, _ := frameit.Next()
+	return f
 }
 
 // FuncName returns name of currently running function (caller of FuncName())
 // name is fully qualified package/name.function(.x)
 func FuncName() string {
-	return _myfuncname(3)
+	f := _myframe(3)
+	return f.Function
 }
 
 // PkgName returns name of currently running function's package
 // package is fully qualified package/name
 func PkgName() string {
-	myfunc := _myfuncname(3)
-	if myfunc == "" {
-		return ""
-	}
+	f := _myframe(3)
+	myfunc := f.Function
 	// NOTE dots in package name are after last slash are escaped by go as %2e
 	// this way the first '.' after last '/' is delimiter between package and function
 	//
