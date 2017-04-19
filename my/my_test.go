@@ -22,6 +22,16 @@ import (
 	"testing"
 )
 
+// goes first not to be broken by other edits
+func TestMyLine(t *testing.T) {
+	myline := Line()
+	want := 27
+	if myline != want {
+		t.Errorf("my.Line() -> %v  ; want %v", myline, want)
+	}
+}
+
+
 func TestMyFuncName(t *testing.T) {
 	myfunc := FuncName()
 	// go test changes full package name (putting filesystem of the tree into it)
@@ -29,5 +39,15 @@ func TestMyFuncName(t *testing.T) {
 	wantsuffix := ".TestMyFuncName"
 	if !strings.HasSuffix(myfunc, wantsuffix) {
 		t.Errorf("my.FuncName() -> %v  ; want *%v", myfunc, wantsuffix)
+	}
+}
+
+// XXX how to test PkgName? (go test changes full package name - see ^^^)
+
+func TestMyFile(t *testing.T) {
+	myfile := File()
+	wantsuffix := "my_test.go"
+	if !strings.HasSuffix(myfile, wantsuffix) {
+		t.Errorf("my.File() -> %v  ; want *%v", myfile, wantsuffix)
 	}
 }

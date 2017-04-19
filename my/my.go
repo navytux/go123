@@ -60,3 +60,20 @@ func PkgName() string {
 	}
 	return myfunc[:iafterslash+idot]
 }
+
+// File returns path of currently running function's file
+func File() string {
+	f := _myframe(3)
+	return f.File
+}
+
+// Line returns currently running function's line
+func Line() int {
+	f := _myframe(3)
+	return f.Line
+}
+
+// Frame returns currently running functions's frame
+func Frame() runtime.Frame {
+	return _myframe(3)
+}
