@@ -15,7 +15,7 @@
 //
 // See COPYING file for full licensing terms.
 
-package myname
+package my
 
 import (
 	"strings"
@@ -23,11 +23,11 @@ import (
 )
 
 func TestMyFuncName(t *testing.T) {
-	myfunc := Func()
-	// go test changes full package name (putting filesystem of the tree into ti)
+	myfunc := FuncName()
+	// go test changes full package name (putting filesystem of the tree into it)
 	// thus we check only for suffix
 	wantsuffix := ".TestMyFuncName"
 	if !strings.HasSuffix(myfunc, wantsuffix) {
-		t.Errorf("myname.Func() -> %v  ; want *%v", myfunc, wantsuffix)
+		t.Errorf("my.FuncName() -> %v  ; want *%v", myfunc, wantsuffix)
 	}
 }

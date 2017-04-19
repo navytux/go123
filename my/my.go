@@ -15,8 +15,8 @@
 //
 // See COPYING file for full licensing terms.
 
-// Package myname provides easy way to determine current function's name and package
-package myname
+// Package my provides easy way to determine current function's name and other context
+package my
 
 import (
 	"fmt"
@@ -34,15 +34,15 @@ func _myfuncname(nskip int) string {
 	return f.Name()
 }
 
-// get name of currently running function (caller of Func())
+// FuncName returns name of currently running function (caller of FuncName())
 // name is fully qualified package/name.function(.x)
-func Func() string {
+func FuncName() string {
 	return _myfuncname(3)
 }
 
-// get name of currently running function's package
+// PkgName returns name of currently running function's package
 // package is fully qualified package/name
-func Pkg() string {
+func PkgName() string {
 	myfunc := _myfuncname(3)
 	if myfunc == "" {
 		return ""

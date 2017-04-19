@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"strings"
 
-	"lab.nexedi.com/kirr/go123/myname"
+	"lab.nexedi.com/kirr/go123/my"
 	"lab.nexedi.com/kirr/go123/xruntime"
 )
 
@@ -147,7 +147,7 @@ var (
 )
 
 func init() {
-	_errorpkgname	= myname.Pkg()
+	_errorpkgname	= my.PkgName()
 	_errorpkgdot	= _errorpkgname + "."
 	_errorraise	= _errorpkgname + ".Raise"
 }
@@ -187,7 +187,7 @@ func Addcallingcontext(topfunc string, e *Error) *Error {
 // the error, if non-nil, will be returned with added calling context - see
 // Addcallingcontext for details.
 func Runx(xf func()) (err error) {
-	here := myname.Func()
+	here := my.FuncName()
 	defer Catch(func(e *Error) {
 		err = Addcallingcontext(here, e)
 	})

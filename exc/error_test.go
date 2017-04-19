@@ -23,7 +23,7 @@ import (
 	"runtime"
 	"testing"
 
-	"lab.nexedi.com/kirr/go123/myname"
+	"lab.nexedi.com/kirr/go123/my"
 )
 
 func do_raise1() {
@@ -138,7 +138,7 @@ func TestErrAddCallingContext(t *testing.T) {
 
 	for _, tt := range tests {
 		func() {
-			myfunc := myname.Func()
+			myfunc := my.FuncName()
 			defer Catch(func(e *Error) {
 				e = Addcallingcontext(myfunc, e)
 				msg := e.Error()
