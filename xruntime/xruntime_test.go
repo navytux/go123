@@ -15,35 +15,47 @@
 //
 // See COPYING file for full licensing terms.
 
-// Package xruntime provides addons to standard package runtime
 package xruntime
 
 import (
 	"runtime"
+	"testing"
+
+	"lab.nexedi.com/kirr/go123/my"
 )
 
-// Traceback returns current calling traceback as []runtime.Frame
-// nskip meaning: the same as in runtime.Callers()
-func Traceback(nskip int) []runtime.Frame {
-	// all callers
-	var pcv = []uintptr{0}
-	for {
-		pcv = make([]uintptr, 2*len(pcv))
-		n := runtime.Callers(nskip+1, pcv)
-		if n < len(pcv) {
-			pcv = pcv[:n]
-			break
+func f333(tb1, tb2 *[]runtime.Frame) {
+	// NOTE keeping tb1 and tb2 updates on the same line - so that .Line in both frames is the same
+	*tb1 = append(*tb1, my.Frame()); *tb2 = Traceback(1)
+}
+
+func f222(tb1, tb2 *[]runtime.Frame) {
+	*tb1 = append(*tb1, my.Frame()); f333(tb1, tb2)
+}
+
+func f111(tb1, tb2 *[]runtime.Frame) {
+	*tb1 = append(*tb1, my.Frame()); f222(tb1, tb2)
+}
+
+func TestTraceback(t *testing.T) {
+	var tb1, tb2 []runtime.Frame
+	f111(&tb1, &tb2)
+
+	if len(tb1) != 3 {
+		t.Fatal("len(tb1) = %v  ; must be 3", len(tb1))
+	}
+
+	tb1[0], tb1[1], tb1[2] = tb1[2], tb1[1], tb1[0] // reverse
+
+	for i, f1 := range tb1 {
+		f2 := tb2[i]
+
+		// pc are different; everything else must be the same
+		f1.PC = 0
+		f2.PC = 0
+
+		if f1 != f2 {
+			t.Errorf("traceback #%v:\nhave %v\nwant %v", i, f2, f1)
 		}
 	}
-
-	// pcv -> frames
-	framev := make([]runtime.Frame, 0, len(pcv))
-	frames := runtime.CallersFrames(pcv)
-	for more := true; more; {
-		var frame runtime.Frame
-		frame, more = frames.Next()
-		framev = append(framev, frame)
-	}
-
-	return framev
 }

@@ -20,6 +20,7 @@ package exc
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 
 	"lab.nexedi.com/kirr/go123/my"
@@ -36,11 +37,10 @@ func (e *Error) Error() string {
 	msgv := []string{}
 	msg := ""
 	for e != nil {
-		// TODO(go1.7) -> runtime.Frame  (see xruntime.Traceback())
-		if f, ok := e.arg.(xruntime.Frame); ok {
+		if f, ok := e.arg.(runtime.Frame); ok {
 			//msg = f.Function
 			//msg = fmt.Sprintf("%s (%s:%d)", f.Function, f.File, f.Line)
-			msg = strings.TrimPrefix(f.Name(), _errorpkgdot) // XXX -> better prettyfunc
+			msg = strings.TrimPrefix(f.Function, _errorpkgdot) // XXX -> better prettyfunc
 		} else {
 			msg = fmt.Sprint(e.arg)
 		}
@@ -159,7 +159,7 @@ func Addcallingcontext(topfunc string, e *Error) *Error {
 	seenraise := false
 	for _, f := range xruntime.Traceback(2) {
 		// do not show anything after raise*()
-		if !seenraise && strings.HasPrefix(f.Name(), _errorraise) {
+		if !seenraise && strings.HasPrefix(f.Function, _errorraise) {
 			seenraise = true
 			continue
 		}
@@ -168,12 +168,12 @@ func Addcallingcontext(topfunc string, e *Error) *Error {
 		}
 
 		// do not go beyond topfunc
-		if topfunc != "" && f.Name() == topfunc {
+		if topfunc != "" && f.Function == topfunc {
 			break
 		}
 
 		// skip intermediates
-		if strings.HasSuffix(f.Name(), "_") { // XXX -> better skipfunc
+		if strings.HasSuffix(f.Function, "_") { // XXX -> better skipfunc
 			continue
 		}
 
