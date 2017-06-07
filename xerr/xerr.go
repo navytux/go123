@@ -72,3 +72,43 @@ func (errv Errorv) Err() error {
 		return errv
 	}
 }
+
+// ----------------------------------------
+
+// Context provides error context to be automatically added on error return
+// to work as intended it should be called under defer like this:
+//
+//	func myfunc(...) (..., err error) {
+//		defer xerr.Context(&err, "error context")
+//		...
+//
+// it is also possible to use Context directly to add context to an error if it
+// is non-nil:
+//
+//	..., myerr := f()
+//	xerr.Context(&myerr, "while doing something")
+//
+// which is equivalent to
+//
+//	..., myerr := f()
+//	if myerr != nil {
+//		myerr = fmt.Errorf("%s: %s", "while doing something", myerr)
+//	}
+func Context(errp *error, context string) {
+	if *errp == nil {
+		return
+	}
+	*errp = fmt.Errorf("%s: %s", context, *errp)
+}
+
+// Contextf provides formatted error context to be automatically added on error return
+// Contextf is formatted analog of Context. Please see Context for details on how to use.
+func Contextf(errp *error, format string, argv ...interface{}) {
+	if *errp == nil {
+	        return
+	}
+
+	format += ": %s"
+	argv = append(argv, *errp)
+	*errp = fmt.Errorf(format, argv...)
+}

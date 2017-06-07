@@ -63,3 +63,34 @@ func TestErrorv(t *testing.T) {
 	- err3 "hello world"
 `)
 }
+
+func TestContext(t *testing.T) {
+	test := func(e error) (err error) {
+		defer Context(&err, "test ctx")
+		return e
+	}
+
+	testf := func(e error) (err error) {
+		defer Contextf(&err, "testf ctx %d %q", 123, "hello")
+		return e
+	}
+
+	if test(nil) != nil {
+		t.Error("Context(nil) -> !nil")
+	}
+	if testf(nil) != nil {
+		t.Error("Contextf(nil) -> !nil")
+	}
+
+	err := errors.New("an error")
+
+	want := "test ctx: an error"
+	if e := test(err); !(e != nil && e.Error() == want) {
+		t.Errorf("Context(%v) -> %v  ; want %v", err, e, want)
+	}
+
+	want = `testf ctx 123 "hello": an error`
+	if e := testf(err); !(e != nil && e.Error() == want) {
+		t.Errorf("Contextf(%v) -> %v  ; want %v", err, e, want)
+	}
+}
