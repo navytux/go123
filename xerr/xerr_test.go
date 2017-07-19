@@ -64,6 +64,66 @@ func TestErrorv(t *testing.T) {
 `)
 }
 
+func TestMerge(t *testing.T) {
+	e := errors.New("e")
+	e2 := errors.New("e2")
+
+	testv := []struct {
+		in  []error
+		out error
+	}{
+		{nil, nil},
+		{[]error{}, nil},
+		{[]error{nil}, nil},
+		{[]error{nil, nil}, nil},
+		{[]error{e}, e},
+		{[]error{e, nil}, e},
+		{[]error{nil, e}, e},
+		{[]error{nil, e, nil}, e},
+		{[]error{nil, e, e2}, Errorv{e, e2}},
+		{[]error{nil, e2, e}, Errorv{e2, e}},
+		{[]error{nil, e2, nil, e}, Errorv{e2, e}},
+		{[]error{nil, e2, nil, e, nil}, Errorv{e2, e}},
+	}
+
+	for _, tt := range testv {
+		err := Merge(tt.in...)
+		//if err != tt.out {
+		// XXX Errorv is uncomparable because it is []
+		if !reflect.DeepEqual(err, tt.out) {
+			t.Errorf("Merge(%v) -> %v  ; want %v", tt.in, err, tt.out)
+		}
+	}
+}
+
+func TestFirst(t *testing.T) {
+	e := errors.New("e")
+	e2 := errors.New("e2")
+
+	testv := []struct {
+		in  []error
+		out error
+	}{
+		{nil, nil},
+		{[]error{}, nil},
+		{[]error{nil}, nil},
+		{[]error{nil, nil}, nil},
+		{[]error{e}, e},
+		{[]error{e, nil}, e},
+		{[]error{nil, e}, e},
+		{[]error{nil, e, nil}, e},
+		{[]error{nil, e, e2}, e},
+		{[]error{nil, e2, e}, e2},
+	}
+
+	for _, tt := range testv {
+		err := First(tt.in...)
+		if err != tt.out {
+			t.Errorf("First(%v) -> %v  ; want %v", tt.in, err, tt.out)
+		}
+	}
+}
+
 func TestContext(t *testing.T) {
 	test := func(e error) (err error) {
 		defer Context(&err, "test ctx")

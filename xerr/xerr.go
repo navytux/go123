@@ -73,6 +73,29 @@ func (errv Errorv) Err() error {
 	}
 }
 
+// Merge merges non-nil errors into one error
+// it returns:
+// - nil			if all errors are nil
+// - single error		if there is only one non-nil error
+// - Errorv with non-nil errors	if there is more than one non-nil error
+func Merge(errv ...error) error {
+	ev := Errorv{}
+	for _, err := range errv {
+		ev.Appendif(err)
+	}
+	return ev.Err()
+}
+
+// First returns first non-nil error, or nil if there is no errors
+func First(errv ...error) error {
+	for _, err := range errv {
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // ----------------------------------------
 
 // Context provides error context to be automatically added on error return
