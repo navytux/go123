@@ -118,3 +118,11 @@ func (b *Buffer) Qpyb(x []byte) *Buffer {
 	*b = AppendQuotePyBytes(*b, x)
 	return b
 }
+
+// TODO Qpyc?
+
+// Qpycb appends byte quoted as Python would do for a single-character string
+func (b *Buffer) Qpycb(c byte) *Buffer {
+	*b = AppendQuotePyBytes(*b, []byte{c})	// does not escape
+	return b
+}
