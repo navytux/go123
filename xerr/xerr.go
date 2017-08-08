@@ -20,6 +20,8 @@ package xerr
 
 import (
 	"fmt"
+
+	"github.com/pkg/errors"
 )
 
 // error merging multiple errors (e.g. after collecting them from several parallel workers)
@@ -113,15 +115,17 @@ func First(errv ...error) error {
 //
 // which is equivalent to
 //
+//	import "github.com/pkg/errors"
+//
 //	..., myerr := f()
 //	if myerr != nil {
-//		myerr = fmt.Errorf("%s: %s", "while doing something", myerr)
+//		myerr = errors.WithMessage(myerr, "while doing something")
 //	}
 func Context(errp *error, context string) {
 	if *errp == nil {
 		return
 	}
-	*errp = fmt.Errorf("%s: %s", context, *errp)
+	*errp = errors.WithMessage(*errp, context)
 }
 
 // Contextf provides formatted error context to be automatically added on error return
@@ -131,7 +135,5 @@ func Contextf(errp *error, format string, argv ...interface{}) {
 	        return
 	}
 
-	format += ": %s"
-	argv = append(argv, *errp)
-	*errp = fmt.Errorf(format, argv...)
+	*errp = errors.WithMessage(*errp, fmt.Sprintf(format, argv...))
 }

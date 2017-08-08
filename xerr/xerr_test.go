@@ -21,6 +21,8 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+
+	pkgerrors "github.com/pkg/errors"
 )
 
 func TestErrorv(t *testing.T) {
@@ -144,13 +146,21 @@ func TestContext(t *testing.T) {
 
 	err := errors.New("an error")
 
+	e := test(err)
 	want := "test ctx: an error"
-	if e := test(err); !(e != nil && e.Error() == want) {
+	if !(e != nil && e.Error() == want) {
 		t.Errorf("Context(%v) -> %v  ; want %v", err, e, want)
 	}
+	if ec := pkgerrors.Cause(e); ec != err {
+		t.Errorf("Context(%v) -> %v -> cause %v  ; want %v", err, e, ec, err)
+	}
 
+	e = testf(err)
 	want = `testf ctx 123 "hello": an error`
-	if e := testf(err); !(e != nil && e.Error() == want) {
+	if !(e != nil && e.Error() == want) {
 		t.Errorf("Contextf(%v) -> %v  ; want %v", err, e, want)
+	}
+	if ec := pkgerrors.Cause(e); ec != err {
+		t.Errorf("Contextf(%v) -> %v -> cause %v  ; want %v", err, e, ec, err)
 	}
 }
