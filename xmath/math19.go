@@ -34,5 +34,30 @@ func CeilPow2(x uint64) uint64 {
 	}
 }
 
+// CeilLog2 returns minimal i: 2^i >= x
+func CeilLog2(x uint64) int {
+	switch bits.OnesCount64(x) {
+	case 0:
+		return 0
+	case 1:
+		return bits.Len64(x) - 1
+	default:
+		return bits.Len64(x)
+	}
+}
+
+// FloorLog2 returns maximal i: 2^i <= x
+//
+// x=0 gives -> -1.
+func FloorLog2(x uint64) int {
+	switch bits.OnesCount64(x) {
+	case 0:
+		return -1
+	default:
+		return bits.Len64(x) - 1
+	}
+}
+
+
 // XXX if needed: NextPow2 (y > x, such that y = 2^i) is
 //	1 << bits.Len64(x)
