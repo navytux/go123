@@ -220,10 +220,14 @@ func Lock() {
 	traceMu.Lock()
 	xruntime.StopTheWorld("tracing lock")
 	atomic.StoreInt32(&traceLocked, 1)
+	// we synchronized with everyone via stopping the world - there is now
+	// no other goroutines running to race with.
+	xruntime.RaceIgnoreBegin()
 }
 
 // Unlock is the opposite to Lock and returns with the world resumed
 func Unlock() {
+	xruntime.RaceIgnoreEnd()
 	atomic.StoreInt32(&traceLocked, 0)
 	xruntime.StartTheWorld()
 	traceMu.Unlock()
