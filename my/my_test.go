@@ -27,7 +27,7 @@ import (
 // goes first not to be broken by other edits
 func TestMyLine(t *testing.T) {
 	myline := Line()
-	want := 27
+	want := 29
 	if myline != want {
 		t.Errorf("my.Line() -> %v  ; want %v", myline, want)
 	}
