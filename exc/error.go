@@ -185,21 +185,48 @@ func Addcallingcontext(topfunc string, e *Error) *Error {
 	return e
 }
 
-// run a function which raises exception, and return exception as regular error, if any.
+// Runx runs a function which raises exception, and return exception as regular error, if any.
+//
 // the error, if non-nil, will be returned with added calling context - see
 // Addcallingcontext for details.
+//
+// See also: Funcx.
 func Runx(xf func()) (err error) {
-	here := my.FuncName()
-	defer Catch(func(e *Error) {
-		err = Addcallingcontext(here, e)
-	})
-
-	xf()
-	return
+	return Funcx(xf)()
 }
 
-// run a function which returns regular error, and raise exception if error is not nil.
+// Funcx converts a function raising exception, to function returning regular error.
+//
+// Returned function calls xf and converts exception, if any, to error.
+//
+// See also: Runx.
+func Funcx(xf func()) func() error {
+	return func() (err error) {
+		here := my.FuncName()
+		defer Catch(func(e *Error) {
+			err = Addcallingcontext(here, e)
+		})
+
+		xf()
+		return
+	}
+}
+
+// XRun runs a function which returns regular error, and raise exception if error is not nil.
+//
+// See also: XFunc.
 func XRun(f func() error) {
-	err := f()
-	Raiseif(err)
+	XFunc(f)()
+}
+
+// XFunc converts a function returning regular error, to function raising exception.
+//
+// Returned function calls f and raises appropriate exception if error is not nil.
+//
+// See also: XRun.
+func XFunc(f func() error) func() {
+	return func() {
+		err := f()
+		Raiseif(err)
+	}
 }
