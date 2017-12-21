@@ -59,7 +59,7 @@ func TestSlice(t *testing.T) {
 		}
 
 		if !(aliases(s, sprev) == tt.aliased) {
-			t.Fatalf("step %d: %v: unexpected slice aliasing: %v", aliases(s, sprev))
+			t.Fatalf("step %d: %v: unexpected slice aliasing: %v", i, tt, aliases(s, sprev))
 		}
 
 
