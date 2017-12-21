@@ -44,7 +44,7 @@ func TestTraceback(t *testing.T) {
 	f111(&tb1, &tb2)
 
 	if len(tb1) != 3 {
-		t.Fatal("len(tb1) = %v  ; must be 3", len(tb1))
+		t.Fatalf("len(tb1) = %v  ; must be 3", len(tb1))
 	}
 
 	tb1[0], tb1[1], tb1[2] = tb1[2], tb1[1], tb1[0] // reverse
