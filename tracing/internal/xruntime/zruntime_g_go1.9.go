@@ -122,6 +122,7 @@ type timer struct {
 }
 type guintptr uintptr	// XXX stub
 type puintptr uintptr	// XXX stub
+type muintptr uintptr	// XXX stub
 type uintreg  uint	// FIXME wrong on amd64p32
 type m struct {}		// FIXME stub
 type sudog struct {}	// FIXME stub

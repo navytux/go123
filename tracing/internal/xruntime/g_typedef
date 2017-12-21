@@ -48,9 +48,14 @@ typedef_g_fixed() {
 
 	echo "type guintptr uintptr	// XXX stub"
 	echo "type puintptr uintptr	// XXX stub"
+	echo "type muintptr uintptr	// XXX stub"
 	echo "type uintreg  uint	// FIXME wrong on amd64p32"
 	echo "type m struct {}		// FIXME stub"
 	echo "type sudog struct {}	// FIXME stub"
+
+	if (( $govern >= 110 )); then
+		echo "type timersBucket struct {}	// FIXME stub"
+	fi
 }
 
 
@@ -70,7 +75,7 @@ gen_zruntime() {
 
 
 # main driver
-gov="go18 go"
+gov="go18 go19 go110"
 
 for g in $gov; do
 	goset $g
