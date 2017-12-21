@@ -704,7 +704,7 @@ func tracegen(pkgpath string, ctxt *build.Context, cwd string) error {
 
 	// determine package directory
 	if len(pkgi.Files) == 0 {
-		return fmt.Errorf("package %s is empty", pkgi.Pkg.Path)
+		return fmt.Errorf("package %s is empty", pkgi.Pkg.Path())
 	}
 
 	pkgdir := filepath.Dir(lprog.Fset.File(pkgi.Files[0].Pos()).Name())
