@@ -17,7 +17,8 @@
 // See COPYING file for full licensing terms.
 // See https://www.nexedi.com/licensing for rationale and options.
 
-// Package mem allows to work with memory as either string or []byte without copying
+// Package mem provides reference-counted buffer and ways to work with memory
+// as either string or []byte without copying.
 package mem
 
 import (
