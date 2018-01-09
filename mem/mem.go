@@ -25,7 +25,7 @@ import (
 	"unsafe"
 )
 
-// string -> []byte without copying
+// Bytes converts string -> []byte without copying
 func Bytes(s string) []byte {
 	var b []byte
 	bp := (*reflect.SliceHeader)(unsafe.Pointer(&b))
@@ -35,7 +35,7 @@ func Bytes(s string) []byte {
 	return b
 }
 
-// []byte -> string without copying
+// String converts []byte -> string without copying
 func String(b []byte) string {
 	var s string
 	sp := (*reflect.StringHeader)(unsafe.Pointer(&s))
