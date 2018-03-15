@@ -1001,7 +1001,7 @@ List tracepoints defined by a package
 }
 
 func listMain(argv []string) {
-	flags := flag.FlagSet{Usage: func() { genUsage(os.Stderr) }}
+	flags := flag.FlagSet{Usage: func() { listUsage(os.Stderr) }}
 	flags.Init("", flag.ExitOnError)
 	flags.Parse(argv[1:])
 
