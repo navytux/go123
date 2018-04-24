@@ -1,4 +1,4 @@
-// Copyright (C) 2015-2017  Nexedi SA and Contributors.
+// Copyright (C) 2015-2018  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -17,7 +17,35 @@
 // See COPYING file for full licensing terms.
 // See https://www.nexedi.com/licensing for rationale and options.
 
-// Package exc provides exception-style error handling for Go
+// Package exc provides exception-style error handling for Go.
+//
+// Raise and Catch allows to raise and catch exceptions.
+//
+// By default the error caught is the same error that was raised. However with
+// Context functions can arrange for context related to what they are doing to
+// be added to raised error as prefix, for example
+//
+//	func doSomething(path string) {
+//		defer exc.Context(func() interface{} {
+//			return fmt.Sprintf("doing something %s", path)
+//		})()
+//
+//
+// Lacking such Context annotations Addcallingcontext allows to add function
+// names up to the exception point as the calling context. However this way
+// only actions without corresponding arguments (path in the above example) can
+// be shown, and there have to be direct 1-1 relation between program and
+// operational structures.
+//
+// Runx allows to run a function which raises exception, and return exception
+// as regular error, if any. Similarly XRun allows to run a function which
+// returns regular error, and raise exception if error is not nil.
+//
+// Last but not least it has to be taken into account that exceptions
+// complicate control flow and are directly applicable only to serial programs.
+// Their use is thus justified in only limited number of cases and by default
+// one should always first strongly consider using explicit error returns
+// programming style which is canonical in Go.
 package exc
 
 import (
@@ -29,7 +57,7 @@ import (
 	"lab.nexedi.com/kirr/go123/xruntime"
 )
 
-// error type which is raised by Raise(arg)
+// Error is the type which is raised by Raise(arg).
 type Error struct {
 	arg  interface{}
 	link *Error // chain of linked Error(s) - see e.g. Context()
@@ -53,9 +81,10 @@ func (e *Error) Error() string {
 	return strings.Join(msgv, ": ")
 }
 
-// turn any value into Error
-// if v is already Error - it stays the same
-// otherwise new Error is created
+// Aserror turns any value into Error.
+//
+// if v is already Error - it stays the same,
+// otherwise new Error is created.
 func Aserror(v interface{}) *Error {
 	if e, ok := v.(*Error); ok {
 		return e
@@ -63,17 +92,20 @@ func Aserror(v interface{}) *Error {
 	return &Error{v, nil}
 }
 
-// raise error to upper level
+// Raise raise error to upper level.
+//
+// See Catch which receives raised error.
 func Raise(arg interface{}) {
 	panic(Aserror(arg))
 }
 
-// raise formatted string
+// Raisef raises formatted string.
 func Raisef(format string, a ...interface{}) {
 	panic(Aserror(fmt.Sprintf(format, a...)))
 }
 
-// raise if err != nil
+// Raiseif raises if err != nil.
+//
 // NOTE err can be != nil even if typed obj = nil:
 //   var obj *T;
 //   err = obj
@@ -85,9 +117,10 @@ func Raiseif(err error) {
 	}
 }
 
-// checks recovered value to be of *Error
-// if there is non-Error error - repanic it
-// otherwise return Error either nil (no panic), or actual value
+// _errcatch checks recovered value to be of type *Error.
+//
+// if there is non-Error error - repanic it,
+// otherwise return Error either nil (no panic), or actual value.
 func _errcatch(r interface{}) *Error {
 	e, _ := r.(*Error)
 	if e == nil && r != nil {
@@ -96,8 +129,9 @@ func _errcatch(r interface{}) *Error {
 	return e
 }
 
-// catch error and call f(e) if it was caught.
-// must be called under defer
+// Catch catches error and calls f(e) if it was caught.
+//
+// Must be called under defer.
 func Catch(f func(e *Error)) {
 	e := _errcatch(recover())
 	if e == nil {
@@ -107,10 +141,12 @@ func Catch(f func(e *Error)) {
 	f(e)
 }
 
-// be notified when error unwinding is being happening.
-// hook into unwinding process with f() call. Returned error is reraised.
+// Onunwind installs error filter to be applied on error unwinding.
+//
+// It hooks into unwinding process with f() call. Returned error is reraised.
 // see also: Context()
-// must be called under defer
+//
+// Must be called under defer.
 func Onunwind(f func(e *Error) *Error) {
 	// cannot do Catch(...)
 	// as recover() works only in first-level called functions
@@ -123,10 +159,12 @@ func Onunwind(f func(e *Error) *Error) {
 	panic(e)
 }
 
-// provide error context to automatically add on unwinding.
-// f is called if error unwinding is happening.
-// call result is added to raised error as "prefix" context
-// must be called under defer
+// Context provides error context to be added on unwinding.
+//
+// f is called if error unwinding is happening and its
+// result is added to raised error as "prefix" context.
+//
+// Must be called under defer.
 func Context(f func() interface{}) {
 	e := _errcatch(recover())
 	if e == nil {
@@ -137,7 +175,7 @@ func Context(f func() interface{}) {
 	panic(Addcontext(e, arg))
 }
 
-// add "prefix" context to error
+// Addcontext adds "prefix" context to error.
 func Addcontext(e *Error, arg interface{}) *Error {
 	return &Error{arg, e}
 }
@@ -154,9 +192,11 @@ func init() {
 	_errorraise	= _errorpkgname + ".Raise"
 }
 
-// add calling context to error.
+// Addcallingcontext adds calling context to error.
+//
 // Add calling function frames as error context up-to topfunc not including.
-// see also: Addcontext()
+//
+// See also: Addcontext()
 func Addcallingcontext(topfunc string, e *Error) *Error {
 	seenraise := false
 	for _, f := range xruntime.Traceback(2) {
