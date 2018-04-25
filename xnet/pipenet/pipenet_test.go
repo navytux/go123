@@ -101,6 +101,8 @@ func TestPipeNet(t *testing.T) {
 
 	assertEq(t, hα.Network(), "pipet")
 	assertEq(t, hβ.Network(), "pipet")
+	assertEq(t, hα.Name(), "α")
+	assertEq(t, hβ.Name(), "β")
 
 	_, err := hα.Dial(context.Background(), ":0")
 	assertEq(t, err, &net.OpError{Op: "dial", Net: "pipet", Addr: xaddr("α:0"), Err: errConnRefused})

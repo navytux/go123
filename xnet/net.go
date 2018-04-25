@@ -1,5 +1,5 @@
-// Copyright (C) 2017  Nexedi SA and Contributors.
-//                     Kirill Smelkov <kirr@nexedi.com>
+// Copyright (C) 2017-2018  Nexedi SA and Contributors.
+//                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
 // it under the terms of the GNU General Public License version 3, or (at your
@@ -22,7 +22,9 @@ package xnet
 
 import (
 	"context"
+	"fmt"
 	"net"
+	"os"
 
 	"crypto/tls"
 )
@@ -31,6 +33,9 @@ import (
 type Networker interface {
 	// Network returns name of the network
 	Network() string
+
+	// Name returns name of the access-point on the network
+	Name() string
 
 	// XXX +Addr() net.Addr	 -> address of this access-point on underlying network ?
 
@@ -46,26 +51,41 @@ type Networker interface {
 }
 
 
+var hostname string
+func init() {
+	host, err := os.Hostname()
+	if err != nil {
+		panic(fmt.Errorf("cannot detect hostname: %s", err))
+	}
+	hostname = host
+}
+
 // NetPlain creates Networker corresponding to regular network accessors from std package net.
 //
 // network is "tcp", "tcp4", "tcp6", "unix", etc...
 func NetPlain(network string) Networker {
-	return netPlain(network)
+	return &netPlain{network, hostname}
 }
 
-type netPlain string
-
-func (n netPlain) Network() string {
-	return string(n)
+type netPlain struct {
+	network, hostname string
 }
 
-func (n netPlain) Dial(ctx context.Context, addr string) (net.Conn, error) {
+func (n *netPlain) Network() string {
+	return n.network
+}
+
+func (n *netPlain) Name() string {
+	return n.hostname
+}
+
+func (n *netPlain) Dial(ctx context.Context, addr string) (net.Conn, error) {
 	d := net.Dialer{}
-	return d.DialContext(ctx, string(n), addr)
+	return d.DialContext(ctx, n.network, addr)
 }
 
-func (n netPlain) Listen(laddr string) (net.Listener, error) {
-	return net.Listen(string(n), laddr)
+func (n *netPlain) Listen(laddr string) (net.Listener, error) {
+	return net.Listen(n.network, laddr)
 }
 
 // NetTLS wraps underlying networker with TLS layer according to config.
@@ -84,6 +104,10 @@ type netTLS struct {
 
 func (n *netTLS) Network() string {
 	return n.inner.Network() + "+tls"
+}
+
+func (n *netTLS) Name() string {
+	return n.inner.Name()
 }
 
 func (n *netTLS) Dial(ctx context.Context, addr string) (net.Conn, error) {

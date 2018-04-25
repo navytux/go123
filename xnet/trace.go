@@ -1,5 +1,5 @@
-// Copyright (C) 2017  Nexedi SA and Contributors.
-//                     Kirill Smelkov <kirr@nexedi.com>
+// Copyright (C) 2017-2018  Nexedi SA and Contributors.
+//                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
 // it under the terms of the GNU General Public License version 3, or (at your
@@ -81,6 +81,10 @@ type netTrace struct {
 
 func (nt *netTrace) Network() string {
 	return nt.inner.Network() // XXX + "+trace" ?
+}
+
+func (nt *netTrace) Name() string {
+	return nt.inner.Name()
 }
 
 func (nt *netTrace) Dial(ctx context.Context, addr string) (net.Conn, error) {
