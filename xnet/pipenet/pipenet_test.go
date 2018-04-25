@@ -1,5 +1,5 @@
-// Copyright (C) 2017  Nexedi SA and Contributors.
-//                     Kirill Smelkov <kirr@nexedi.com>
+// Copyright (C) 2017-2018  Nexedi SA and Contributors.
+//                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
 // it under the terms of the GNU General Public License version 3, or (at your
@@ -98,6 +98,9 @@ func TestPipeNet(t *testing.T) {
 
 	hα := pnet.Host("α")
 	hβ := pnet.Host("β")
+
+	assertEq(t, hα.Network(), "pipet")
+	assertEq(t, hβ.Network(), "pipet")
 
 	_, err := hα.Dial(context.Background(), ":0")
 	assertEq(t, err, &net.OpError{Op: "dial", Net: "pipet", Addr: xaddr("α:0"), Err: errConnRefused})
