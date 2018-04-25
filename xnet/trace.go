@@ -47,12 +47,19 @@ func NetTrace(inner Networker, tracer Tracer) Networker {
 
 // Tracer is the interface that needs to be implemented by network trace receivers
 type Tracer interface {
+	TraceNetDial(*TraceDial)
 	TraceNetConnect(*TraceConnect)
 	TraceNetListen(*TraceListen)
 	TraceNetTx(*TraceTx)
 }
 
-// TraceConnect is event corresponding to network connection
+// TraceDial is event corresponding to network dial start.
+type TraceDial struct {
+	// XXX also put networker?
+	Dialer, Addr string
+}
+
+// TraceConnect is event corresponding to established network connection.
 type TraceConnect struct {
 	// XXX also put networker?
 	Src, Dst net.Addr
@@ -88,7 +95,7 @@ func (nt *netTrace) Name() string {
 }
 
 func (nt *netTrace) Dial(ctx context.Context, addr string) (net.Conn, error) {
-	// XXX +TraceNetDialPost ?
+	nt.tracer.TraceNetDial(&TraceDial{Dialer: nt.inner.Name(), Addr: addr})
 	c, err := nt.inner.Dial(ctx, addr)
 	if err != nil {
 		return nil, err
