@@ -59,6 +59,16 @@
 //
 // There is also First counterpart to Merge, which returns only first !nil
 // error.
+//
+// Since Errorv is actually a slice it cannot be generally compared - for example
+// comparing 2 error interfaces that both have dynamic type Errorv will panic
+// at runtime. However it is possible to compare Errorv to other error types,
+// because interfaces with different dynamic types are always not equal. For
+// example the following works:
+//
+//	var err error = Errorv{...} // received as result from a function
+//	if err == io.EOF {
+//		...
 package xerr
 
 import (

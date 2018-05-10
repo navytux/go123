@@ -1,4 +1,4 @@
-// Copyright (C) 2016-2017  Nexedi SA and Contributors.
+// Copyright (C) 2016-2018  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -21,6 +21,7 @@ package xerr
 
 import (
 	"errors"
+	"io"
 	"reflect"
 	"testing"
 
@@ -29,9 +30,13 @@ import (
 
 func TestErrorv(t *testing.T) {
 	var errv Errorv
+
+	// check verifies that:
+	// 1. errv.Err() == aserr
+	// 2. errv.Error() == errmsg
 	check := func(aserr error, errmsg string) {
 		err := errv.Err()
-		// cannot use err != aserr as Errorv is not comparable (it is a slice)
+		// cannot use err != aserr as Errorv is not generally comparable (it is a slice)
 		if !reflect.DeepEqual(err, aserr) {
 			t.Fatalf("%#v: Err() -> %#v  ; want %#v", errv, err, aserr)
 		}
@@ -66,6 +71,40 @@ func TestErrorv(t *testing.T) {
 	- err2
 	- err3 "hello world"
 `)
+
+	// since Errorv is a slice it cannot be generally compared - for
+	// example comparing 2 error interfaces that both have dynamic type
+	// Errorv will panic. However it is possible to compare Errorv to other
+	// types, because interfaces with different dynamic types are always
+	// not equal.
+	eqcheck := func(a, b error, expect bool) {
+		t.Helper()
+		eq := (a == b)
+		ne := (a != b)
+		if eq != expect {
+			t.Fatalf("%#v == %#v -> %v; want %v", a, b, eq, expect)
+		}
+		if ne != !expect {
+			t.Fatalf("%#v != %#v -> %v; want %v", a, b, ne, !expect)
+		}
+	}
+
+	eqcheck(err1, nil, false)
+	eqcheck(err1, err1, true)
+	eqcheck(errv, nil, false)
+	eqcheck(errv, err1, false)
+	eqcheck(errv, io.EOF, false)
+
+	// check Errorv == Errorv panics.
+	func() {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Fatal("Errorv == Errorv -> not paniced")
+			}
+		}()
+
+		eqcheck(errv, errv, true)
+	}()
 }
 
 func TestMerge(t *testing.T) {
