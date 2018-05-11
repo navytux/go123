@@ -49,6 +49,11 @@ typedef_g() {
 	if (( $govern < 109 )); then
 		typedef runtime.stkbar
 	fi
+
+	if (( $govern >= 111 )); then
+		typedef runtime.waitReason
+		typedef runtime.ancestorInfo
+	fi
 }
 
 # typedef_g_fixed - print adjusted <g> & friends definitions
@@ -82,7 +87,7 @@ gen_zruntime() {
 
 
 # main driver
-gov="go18 go19 go110"
+gov="go18 go19 go1.10 go1.11"
 
 for g in $gov; do
 	goset $g
