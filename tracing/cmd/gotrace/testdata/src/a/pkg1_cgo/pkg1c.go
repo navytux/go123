@@ -9,13 +9,10 @@ void hello() {
 */
 import "C"
 
-// FIXME vvv does not currently work because go/loader gives us already
-// preprocessed result without original comments.
-//
 // trace event defined in a cgo file
-//trace:event traceHello()
+//trace:event traceCHello()
 
 func Hello() {
-	//traceHello()
+	traceCHello()
 	C.hello()
 }

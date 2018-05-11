@@ -1,4 +1,4 @@
-// Copyright (C) 2017  Nexedi SA and Contributors.
+// Copyright (C) 2018  Nexedi SA and Contributors.
 //                     Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -281,10 +281,9 @@ func packageTrace(prog *loader.Program, pkgi *loader.PackageInfo) (*Package, err
 
 	// go through files of the original package and process //trace: directives
 	//
-	// FIXME we currently don't process cgo files as go/loader passes to us
+	// NOTE before go1.10 we don't process cgo files as there go/loader passes to us
 	// already preprocessed results with comments stripped, not original source.
-	// Maybe in some time it will be possible to have AST of original source:
-	// https://golang.org/issues/16623
+	// This problem was fixed for go1.10 in https://github.com/golang/go/commit/85c3ebf4.
 	for _, file := range pkgi.Files {                        // ast.File
 		for _, commgroup := range file.Comments {        // ast.CommentGroup
 			for _, comment := range commgroup.List { // ast.Comment

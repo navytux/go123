@@ -134,6 +134,16 @@ func diffR(patha, pathb string) (diff string, err error) {
 	return string(out), err
 }
 
+// haveReleaseTag returns whether current compiler has specified tag in its default build environment.
+func haveReleaseTag(tag string) bool {
+	for _, rtag := range build.Default.ReleaseTags {
+		if tag == rtag {
+			return true
+		}
+	}
+	return false
+}
+
 func TestGoTrace(t *testing.T) {
 	tmp, err := ioutil.TempDir("", "t-gotrace")
 	if err != nil {
@@ -159,6 +169,10 @@ func TestGoTrace(t *testing.T) {
 
 	// XXX autodetect (go list ?)
 	testv := []string{"a/pkg1", "b/pkg2", "c/pkg3", "d/pkg4"}
+	// cgo parsing works starting with Go 1.10
+	if haveReleaseTag("go1.10") {
+		testv = append(testv, "a/pkg1_cgo")
+	}
 
 	for _, tpkg := range testv {
 		// verify `gotrace gen`
