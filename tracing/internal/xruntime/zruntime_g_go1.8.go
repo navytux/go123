@@ -128,13 +128,13 @@ type timer struct {
 	arg    interface{}
 	seq    uintptr
 }
+type guintptr uintptr
+type puintptr uintptr
+type muintptr uintptr
 type stkbar struct {
 	savedLRPtr uintptr // location overwritten by stack barrier PC
 	savedLRVal uintptr // value overwritten at savedLRPtr
 }
-type guintptr uintptr	// XXX stub
-type puintptr uintptr	// XXX stub
-type muintptr uintptr	// XXX stub
 type uintreg  uint	// FIXME wrong on amd64p32
 type m struct {}		// FIXME stub
 type sudog struct {}	// FIXME stub

@@ -18,9 +18,17 @@ goset() {
 
 # typedef <type> - print type definition
 typedef() {
-	$goexec doc -c -u $1 |sed -n -e '/^type /,/^}/p'
-}
+	$goexec doc -c -u $1 |sed -n -e '
+# ignore anything not starting with `type `
+/^type /!b
 
+# if there is opening `{` - loop till closing `}`
+/{/{:loop p; n; /^}/!b loop; p; b}
+
+# else just print this single line
+p
+'
+}
 
 # typedef_g 	- print <g> & friends definitions
 typedef_g() {
@@ -33,7 +41,9 @@ typedef_g() {
 	#typedef runtime.sudog
 	#typedef runtime.hchan
 	typedef runtime.timer
-	#typedef runtime.guintptr
+	typedef runtime.guintptr
+	typedef runtime.puintptr
+	typedef runtime.muintptr
 	#typedef runtime.m
 
 	if (( $govern < 109 )); then
@@ -46,9 +56,6 @@ typedef_g_fixed() {
 	typedef_g $1 | \
 		sed -e 's/\<sys.Uintreg\>/uintreg/'
 
-	echo "type guintptr uintptr	// XXX stub"
-	echo "type puintptr uintptr	// XXX stub"
-	echo "type muintptr uintptr	// XXX stub"
 	echo "type uintreg  uint	// FIXME wrong on amd64p32"
 	echo "type m struct {}		// FIXME stub"
 	echo "type sudog struct {}	// FIXME stub"

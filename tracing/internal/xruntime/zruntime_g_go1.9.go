@@ -120,9 +120,9 @@ type timer struct {
 	arg    interface{}
 	seq    uintptr
 }
-type guintptr uintptr	// XXX stub
-type puintptr uintptr	// XXX stub
-type muintptr uintptr	// XXX stub
+type guintptr uintptr
+type puintptr uintptr
+type muintptr uintptr
 type uintreg  uint	// FIXME wrong on amd64p32
 type m struct {}		// FIXME stub
 type sudog struct {}	// FIXME stub
