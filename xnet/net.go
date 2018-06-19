@@ -29,22 +29,25 @@ import (
 	"crypto/tls"
 )
 
-// Networker is interface representing access-point to a streaming network
+// Networker is interface representing access-point to a streaming network.
 type Networker interface {
 	// Network returns name of the network
 	Network() string
 
-	// Name returns name of the access-point on the network
+	// Name returns name of the access-point on the network.
+	//
+	// Example of name is local hostname if networker provides access to
+	// OS-level dial/listen.
 	Name() string
 
-	// XXX +Addr() net.Addr	 -> address of this access-point on underlying network ?
-
-	// Dial connects to addr on underlying network
-	// see net.Dial for semantic details
+	// Dial connects to addr on underlying network.
+	//
+	// See net.Dial for semantic details.
 	Dial(ctx context.Context, addr string) (net.Conn, error)
 
-	// Listen starts listening on local address laddr on underlying network access-point
-	// see net.Listen for semantic details
+	// Listen starts listening on local address laddr on underlying network access-point.
+	//
+	// See net.Listen for semantic details.
 	//
 	// XXX also introduce xnet.Listener in which Accept() accepts also ctx?
 	Listen(laddr string) (net.Listener, error)
@@ -91,8 +94,9 @@ func (n *netPlain) Listen(laddr string) (net.Listener, error) {
 // NetTLS wraps underlying networker with TLS layer according to config.
 //
 // The config must be valid:
-// - for tls.Client -- for Dial to work,
-// - for tls.Server -- for Listen to work.
+//
+//	- for tls.Client -- for Dial to work,
+//	- for tls.Server -- for Listen to work.
 func NetTLS(inner Networker, config *tls.Config) Networker {
 	return &netTLS{inner, config}
 }
