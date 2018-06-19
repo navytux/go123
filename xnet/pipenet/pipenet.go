@@ -53,7 +53,7 @@ import (
 	"lab.nexedi.com/kirr/go123/xnet"
 )
 
-const NetPrefix = "pipe" // pipenet package creates only "pipe*" networks
+const netPrefix = "pipe" // pipenet package creates only "pipe*" networks
 
 var (
 	errNetClosed       = errors.New("network connection closed")
@@ -62,14 +62,14 @@ var (
 	errConnRefused     = errors.New("connection refused")
 )
 
-// Addr represents address of a pipenet endpoint
+// Addr represents address of a pipenet endpoint.
 type Addr struct {
 	Net  string // full network name, e.g. "pipe"
 	Host string // name of host access point on the network
 	Port int    // port on host
 }
 
-// Network implements synchronous in-memory network of pipes
+// Network implements synchronous in-memory TCP-like network of pipes.
 type Network struct {
 	// name of this network under "pipe" namespace -> e.g. ""
 	// full network name will be reported as "pipe"+name
@@ -82,7 +82,7 @@ type Network struct {
 	hostMap map[string]*Host
 }
 
-// Host represents named access point on Network
+// Host represents named access point on Network.
 type Host struct {
 	network *Network
 	name    string
@@ -93,8 +93,9 @@ type Host struct {
 
 var _ xnet.Networker = (*Host)(nil)
 
-// socket represents one endpoint entry on Network
-// it can be either already connected or listening
+// socket represents one endpoint entry on Host.
+//
+// it can be either already connected or listening.
 type socket struct {
 	host *Host // host/port this socket is bound to
 	port int
@@ -103,7 +104,7 @@ type socket struct {
 	listener *listener // listener is waiting here if != nil
 }
 
-// conn represents one endpoint of connection created under Network
+// conn represents one endpoint of connection created under Network.
 type conn struct {
 	socket *socket
 	peersk *socket // the other side of this connection
@@ -113,7 +114,7 @@ type conn struct {
 	closeOnce sync.Once
 }
 
-// listener implements net.Listener for piped network
+// listener implements net.Listener for Host.Listen .
 type listener struct {
 	// network/host/port we are listening on
 	socket *socket
@@ -124,7 +125,7 @@ type listener struct {
 	closeOnce sync.Once
 }
 
-// dialReq represents one dial request to listener
+// dialReq represents one dial request to listener.
 type dialReq struct {
 	from *Host
 	resp chan net.Conn
@@ -132,16 +133,17 @@ type dialReq struct {
 
 // ----------------------------------------
 
-// New creates new pipenet Network
+// New creates new pipenet Network.
 //
-// name is name of this network under "pipe" namespace, e.g. "α" will give full network name "pipeα".
+// Name is name of this network under "pipe" namespace, e.g. "α" will give full
+// network name "pipeα".
 //
 // New does not check whether network name provided is unique.
 func New(name string) *Network {
 	return &Network{name: name, hostMap: make(map[string]*Host)}
 }
 
-// Host returns network access point by name
+// Host returns network access point by name.
 //
 // If there was no such host before it creates new one.
 func (n *Network) Host(name string) *Host {
@@ -157,8 +159,9 @@ func (n *Network) Host(name string) *Host {
 	return host
 }
 
-// resolveAddr resolves addr on the network from the host point of view
-// must be called with Network.mu held
+// resolveAddr resolves addr on the network from the host point of view.
+//
+// must be called with Network.mu held.
 func (h *Host) resolveAddr(addr string) (host *Host, port int, err error) {
 	a, err := h.network.ParseAddr(addr)
 	if err != nil {
@@ -178,7 +181,7 @@ func (h *Host) resolveAddr(addr string) (host *Host, port int, err error) {
 	return host, a.Port, nil
 }
 
-// Listen starts new listener
+// Listen starts new listener on the host.
 //
 // It either allocates free port if laddr is "" or with 0 port, or binds to laddr.
 // Once listener is started, Dials could connect to listening address.
@@ -239,8 +242,9 @@ func (h *Host) Listen(laddr string) (net.Listener, error) {
 	return l, nil
 }
 
-// Close closes the listener
-// it interrupts all currently in-flight calls to Accept
+// Close closes the listener.
+//
+// It interrupts all currently in-flight calls to Accept.
 func (l *listener) Close() error {
 	l.closeOnce.Do(func() {
 		close(l.down)
@@ -260,7 +264,7 @@ func (l *listener) Close() error {
 	return nil
 }
 
-// Accept tries to connect to Dial called with addr corresponding to our listener
+// Accept tries to connect to Dial called with addr corresponding to our listener.
 func (l *listener) Accept() (net.Conn, error) {
 	h := l.socket.host
 	n := h.network
@@ -288,7 +292,7 @@ func (l *listener) Accept() (net.Conn, error) {
 	}
 }
 
-// Dial dials address on the network
+// Dial dials address on the network.
 //
 // It tries to connect to Accept called on listener corresponding to addr.
 func (h *Host) Dial(ctx context.Context, addr string) (net.Conn, error) {
@@ -336,8 +340,9 @@ func (h *Host) Dial(ctx context.Context, addr string) (net.Conn, error) {
 	}
 }
 
-// Close closes pipe endpoint and unregisters conn from Network
-// All currently in-flight blocked IO is interrupted with an error
+// Close closes network endpoint and unregisters conn from Host.
+//
+// All currently in-flight blocked IO is interrupted with an error.
 func (c *conn) Close() (err error) {
 	c.closeOnce.Do(func() {
 		err = c.Conn.Close()
@@ -358,12 +363,16 @@ func (c *conn) Close() (err error) {
 	return err
 }
 
-// LocalAddr returns address of local end of connection
+// LocalAddr implements net.Conn.
+//
+// it returns pipenet address of local end of connection.
 func (c *conn) LocalAddr() net.Addr {
 	return c.socket.addr()
 }
 
-// RemoteAddr returns address of remote end of connection
+// RemoteAddr implements net.Conn.
+//
+// it returns pipenet address of remote end of connection.
 func (c *conn) RemoteAddr() net.Addr {
 	return c.peersk.addr()
 }
@@ -371,7 +380,8 @@ func (c *conn) RemoteAddr() net.Addr {
 // ----------------------------------------
 
 // allocFreeSocket finds first free port and allocates socket entry for it.
-// must be called with Network.mu held
+//
+// must be called with Network.mu held.
 func (h *Host) allocFreeSocket() *socket {
 	// find first free port
 	port := 1 // never allocate port 0 - it is used for autobind on listen only
@@ -392,12 +402,12 @@ func (h *Host) allocFreeSocket() *socket {
 	return sk
 }
 
-// empty checks whether socket's both conn and listener are all nil
+// empty checks whether socket's both conn and listener are all nil.
 func (sk *socket) empty() bool {
 	return sk.conn == nil && sk.listener == nil
 }
 
-// addr returns address corresponding to socket
+// addr returns address corresponding to socket.
 func (sk *socket) addr() *Addr {
 	h := sk.host
 	return &Addr{Net: h.Network(), Host: h.name, Port: sk.port}
@@ -406,7 +416,7 @@ func (sk *socket) addr() *Addr {
 func (a *Addr) Network() string { return a.Net }
 func (a *Addr) String() string  { return net.JoinHostPort(a.Host, strconv.Itoa(a.Port)) }
 
-// ParseAddr parses addr into pipenet address
+// ParseAddr parses addr into pipenet address.
 func (n *Network) ParseAddr(addr string) (*Addr, error) {
 	host, portstr, err := net.SplitHostPort(addr)
 	if err != nil {
@@ -419,15 +429,15 @@ func (n *Network) ParseAddr(addr string) (*Addr, error) {
 	return &Addr{Net: n.Network(), Host: host, Port: port}, nil
 }
 
-// Addr returns address where listener is accepting incoming connections
+// Addr returns address where listener is accepting incoming connections.
 func (l *listener) Addr() net.Addr {
 	return l.socket.addr()
 }
 
-// Network returns full network name of this network
+// Network returns full network name of this network.
 func (n *Network) Network() string { return NetPrefix + n.name }
 
-// Network returns full network name of underlying network
+// Network returns full network name of underlying network.
 func (h *Host) Network() string { return h.network.Network() }
 
 // Name returns host name.
