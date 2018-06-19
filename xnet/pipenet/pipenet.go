@@ -38,100 +38,43 @@
 // process without going to OS networking stack.
 package pipenet
 
-// TODO Fix pipenet for TCP semantic: there port(accepted) = port(listen), i.e.
-//     When we connect www.nexedi.com:80, remote addr of socket will have port 80.
-//     Likewise on server side accepted socket will have local port 80.
-//     The connection should be thus fully identified by src-dst address pair.
-
 import (
 	"context"
-	"errors"
+	"fmt"
 	"net"
-	"strconv"
 	"sync"
 
-	"lab.nexedi.com/kirr/go123/xnet"
+	"github.com/pkg/errors"
+
+	"lab.nexedi.com/kirr/go123/xnet/virtnet"
 )
 
 const netPrefix = "pipe" // pipenet package creates only "pipe*" networks
 
-var (
-	errNetClosed       = errors.New("network connection closed")
-	errAddrAlreadyUsed = errors.New("address already in use")
-	errAddrNoListen    = errors.New("cannot listen on requested address")
-	errConnRefused     = errors.New("connection refused")
-)
-
-// Addr represents address of a pipenet endpoint.
-type Addr struct {
-	Net  string // full network name, e.g. "pipe"
-	Host string // name of host access point on the network
-	Port int    // port on host
-}
-
 // Network implements synchronous in-memory TCP-like network of pipes.
 type Network struct {
-	// name of this network under "pipe" namespace -> e.g. ""
-	// full network name will be reported as "pipe"+name
+	vnet    *virtnet.SubNetwork
+	vnotify virtnet.Notifier
+}
+
+// vengine implements virtnet.Engine for Network.
+type vengine struct {
+	network *Network
+}
+
+// ramRegistry implements virtnet.Registry in RAM.
+//
+// Pipenet does not need a registry but virtnet is built for general case which
+// needs one.
+//
+// Essentially it works as map protected by mutex.
+type ramRegistry struct {
 	name string
 
-	// big network lock for everything dynamic under Network
-	// (e.g. Host.socketv too)
-	mu sync.Mutex
-
-	hostMap map[string]*Host
+	mu      sync.Mutex
+	hostTab map[string]string // hostname -> hostdata
+	closed  bool              // 1 after Close
 }
-
-// Host represents named access point on Network.
-type Host struct {
-	network *Network
-	name    string
-
-	// NOTE protected by Network.mu
-	socketv []*socket // port -> listener | conn  ; [0] is always nil
-}
-
-var _ xnet.Networker = (*Host)(nil)
-
-// socket represents one endpoint entry on Host.
-//
-// it can be either already connected or listening.
-type socket struct {
-	host *Host // host/port this socket is bound to
-	port int
-
-	conn     *conn     // connection endpoint is here if != nil
-	listener *listener // listener is waiting here if != nil
-}
-
-// conn represents one endpoint of connection created under Network.
-type conn struct {
-	socket *socket
-	peersk *socket // the other side of this connection
-
-	net.Conn
-
-	closeOnce sync.Once
-}
-
-// listener implements net.Listener for Host.Listen .
-type listener struct {
-	// network/host/port we are listening on
-	socket *socket
-
-	dialq chan dialReq  // Dial requests to our port go here
-	down  chan struct{} // Close -> down=ready
-
-	closeOnce sync.Once
-}
-
-// dialReq represents one dial request to listener.
-type dialReq struct {
-	from *Host
-	resp chan net.Conn
-}
-
-// ----------------------------------------
 
 // New creates new pipenet Network.
 //
@@ -140,305 +83,169 @@ type dialReq struct {
 //
 // New does not check whether network name provided is unique.
 func New(name string) *Network {
-	return &Network{name: name, hostMap: make(map[string]*Host)}
+	netname := netPrefix + name
+	n := &Network{}
+	v := &vengine{n}
+	r := newRAMRegistry(fmt.Sprintf("ram(%s)", netname))
+	subnet, vnotify := virtnet.NewSubNetwork(netname, v, r)
+	n.vnet = subnet
+	n.vnotify = vnotify
+	return n
+}
+
+// AsVirtNet exposes Network as virtnet subnetwork.
+//
+// Since pipenet works entirely in RAM and in 1 OS process, its user interface
+// is simpler compared to more general virtnet - for example there is no error
+// when creating hosts. However sometimes it is handy to get access to pipenet
+// network via full virtnet interface, when the code that is using pipenet
+// network does not want to depend on pipenet API specifics.
+func AsVirtNet(n *Network) *virtnet.SubNetwork {
+	return n.vnet
+}
+
+// Network returns name of the network.
+func (n *Network) Network() string {
+	return n.vnet.Network()
 }
 
 // Host returns network access point by name.
 //
 // If there was no such host before it creates new one.
-func (n *Network) Host(name string) *Host {
-	n.mu.Lock()
-	defer n.mu.Unlock()
+//
+// Host panics if underlying virtnet subnetwork was shut down.
+func (n *Network) Host(name string) *virtnet.Host {
+	// check if it is already there
+	host := n.vnet.Host(name)
+	if host != nil {
+		return host
+	}
 
-	host := n.hostMap[name]
+	// if not - create it. Creation will not block.
+	host, err := n.vnet.NewHost(context.Background(), name)
+	if host != nil {
+		return host
+	}
+
+	// the only way we could get error here is due to either someone else
+	// making the host in parallel to us, or virtnet shutdown.
+	switch errors.Cause(err) {
+	case virtnet.ErrHostDup:
+		// ok
+	case virtnet.ErrNetDown:
+		panic(err)
+
+	default:
+		panic(fmt.Sprintf("pipenet: NewHost failed not due to dup or shutdown: %s", err))
+	}
+
+	// if it was dup - we should be able to get it.
+	//
+	// even if dup.Close is called in the meantime it will mark the host as
+	// down, but won't remove it from vnet .hostMap.
+	host = n.vnet.Host(name)
 	if host == nil {
-		host = &Host{network: n, name: name}
-		n.hostMap[name] = host
+		panic(fmt.Sprintf("pipenet: NewHost said host already is there, but it was not found"))
 	}
 
 	return host
 }
 
-// resolveAddr resolves addr on the network from the host point of view.
-//
-// must be called with Network.mu held.
-func (h *Host) resolveAddr(addr string) (host *Host, port int, err error) {
-	a, err := h.network.ParseAddr(addr)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	// local host if host name omitted
-	if a.Host == "" {
-		a.Host = h.name
-	}
-
-	host = h.network.hostMap[a.Host]
-	if host == nil {
-		return nil, 0, &net.AddrError{Err: "no such host", Addr: addr}
-	}
-
-	return host, a.Port, nil
+// VNetNewHost implements virtnet.Engine .
+func (v *vengine) VNetNewHost(ctx context.Context, hostname string, registry virtnet.Registry) error {
+	// for pipenet there is neither need to create host resources, nor need
+	// to keep any hostdata.
+	return registry.Announce(ctx, hostname, "")
 }
 
-// Listen starts new listener on the host.
+// VNetDial implements virtnet dialing for pipenet.
 //
-// It either allocates free port if laddr is "" or with 0 port, or binds to laddr.
-// Once listener is started, Dials could connect to listening address.
-// Connection requests created by Dials could be accepted via Accept.
-func (h *Host) Listen(laddr string) (net.Listener, error) {
-	h.network.mu.Lock()
-	defer h.network.mu.Unlock()
-
-	var sk *socket
-
-	if laddr == "" {
-		laddr = ":0"
-	}
-
-	var netladdr net.Addr
-	lerr := func(err error) error {
-		return &net.OpError{Op: "listen", Net: h.Network(), Addr: netladdr, Err: err}
-	}
-
-	host, port, err := h.resolveAddr(laddr)
+// Simply create pipe pair and send one end directly to virtnet acceptor.
+func (v *vengine) VNetDial(ctx context.Context, src, dst *virtnet.Addr, _ string) (_ net.Conn, addrAccept *virtnet.Addr, _ error) {
+	pc, ps := net.Pipe()
+	accept, err := v.network.vnotify.VNetAccept(ctx, src, dst, ps)
 	if err != nil {
-		return nil, lerr(err)
+		pc.Close()
+		ps.Close()
+		return nil, nil, err
 	}
 
-	netladdr = &Addr{Net: h.Network(), Host: host.name, Port: port}
-
-	if host != h {
-		return nil, lerr(errAddrNoListen)
-	}
-
-	// find first free port if autobind requested
-	if port == 0 {
-		sk = h.allocFreeSocket()
-
-	// else allocate socket in-place
-	} else {
-		// grow if needed
-		for port >= len(h.socketv) {
-			h.socketv = append(h.socketv, nil)
-		}
-
-		if h.socketv[port] != nil {
-			return nil, lerr(errAddrAlreadyUsed)
-		}
-
-		sk = &socket{host: h, port: port}
-		h.socketv[port] = sk
-	}
-
-	// create listener under socket
-	l := &listener{
-		socket: sk,
-		dialq:  make(chan dialReq),
-		down:   make(chan struct{}),
-	}
-	sk.listener = l
-
-	return l, nil
+	accept.Ack <- nil
+	return pc, accept.Addr, nil
 }
 
-// Close closes the listener.
-//
-// It interrupts all currently in-flight calls to Accept.
-func (l *listener) Close() error {
-	l.closeOnce.Do(func() {
-		close(l.down)
+// Close implements virtnet.Engine .
+func (v *vengine) Close() error {
+	return nil // nop: there is no underlying resources to release.
+}
 
-		sk := l.socket
-		h := sk.host
-		n := h.network
 
-		n.mu.Lock()
-		defer n.mu.Unlock()
 
-		sk.listener = nil
-		if sk.empty() {
-			h.socketv[sk.port] = nil
-		}
-	})
+// Announce implements virtnet.Registry .
+func (r *ramRegistry) Announce(ctx context.Context, hostname, hostdata string) (err error) {
+	defer r.regerr(&err, "announce", hostname, hostdata)
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.closed {
+		return virtnet.ErrRegistryDown
+	}
+
+	if _, already := r.hostTab[hostname]; already {
+		return virtnet.ErrHostDup
+	}
+
+	r.hostTab[hostname] = hostdata
 	return nil
 }
 
-// Accept tries to connect to Dial called with addr corresponding to our listener.
-func (l *listener) Accept() (net.Conn, error) {
-	h := l.socket.host
-	n := h.network
+// Query implements virtnet.Registry .
+func (r *ramRegistry) Query(ctx context.Context, hostname string) (hostdata string, err error) {
+	defer r.regerr(&err, "query", hostname)
 
-	select {
-	case <-l.down:
-		return nil, &net.OpError{Op: "accept", Net: h.Network(), Addr: l.Addr(), Err: errNetClosed}
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
-	case req := <-l.dialq:
-		// someone dialed us - let's connect
-		pc, ps := net.Pipe()
-
-		// allocate sockets and register conns to Network under them
-		n.mu.Lock()
-
-		skc := req.from.allocFreeSocket()
-		sks := h.allocFreeSocket()
-		skc.conn = &conn{socket: skc, peersk: sks, Conn: pc}
-		sks.conn = &conn{socket: sks, peersk: skc, Conn: ps}
-
-		n.mu.Unlock()
-
-		req.resp <- skc.conn
-		return sks.conn, nil
+	if r.closed {
+		return "", virtnet.ErrRegistryDown
 	}
+
+	hostdata, ok := r.hostTab[hostname]
+	if !ok {
+		return "", virtnet.ErrNoHost
+	}
+
+	return hostdata, nil
 }
 
-// Dial dials address on the network.
+// Close implements virtnet.Registry .
+func (r *ramRegistry) Close() error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.closed = true
+	return nil
+}
+
+func newRAMRegistry(name string) *ramRegistry {
+	return &ramRegistry{name: name, hostTab: make(map[string]string)}
+}
+
+// regerr is syntactic sugar to wrap !nil *errp into RegistryError.
 //
-// It tries to connect to Accept called on listener corresponding to addr.
-func (h *Host) Dial(ctx context.Context, addr string) (net.Conn, error) {
-	var netaddr net.Addr
-	derr := func(err error) error {
-		return &net.OpError{Op: "dial", Net: h.Network(), Addr: netaddr, Err: err}
-	}
-
-	n := h.network
-	n.mu.Lock()
-
-	host, port, err := h.resolveAddr(addr)
-	if err != nil {
-		n.mu.Unlock()
-		return nil, derr(err)
-	}
-
-	netaddr = &Addr{Net: h.Network(), Host: host.name, Port: port}
-
-	if port >= len(host.socketv) {
-		n.mu.Unlock()
-		return nil, derr(errConnRefused)
-	}
-
-	sks := host.socketv[port]
-	if sks == nil || sks.listener == nil {
-		n.mu.Unlock()
-		return nil, derr(errConnRefused)
-	}
-	l := sks.listener
-
-	// NOTE Accept is locking n.mu -> we must release n.mu before sending dial request
-	n.mu.Unlock()
-
-	resp := make(chan net.Conn)
-	select {
-	case <-ctx.Done():
-		return nil, derr(ctx.Err())
-
-	case <-l.down:
-		return nil, derr(errConnRefused)
-
-	case l.dialq <- dialReq{from: h, resp: resp}:
-		return <-resp, nil
-	}
-}
-
-// Close closes network endpoint and unregisters conn from Host.
+// intended too be used like
 //
-// All currently in-flight blocked IO is interrupted with an error.
-func (c *conn) Close() (err error) {
-	c.closeOnce.Do(func() {
-		err = c.Conn.Close()
-
-		sk := c.socket
-		h := sk.host
-		n := h.network
-
-		n.mu.Lock()
-		defer n.mu.Unlock()
-
-		sk.conn = nil
-		if sk.empty() {
-			h.socketv[sk.port] = nil
-		}
-	})
-
-	return err
-}
-
-// LocalAddr implements net.Conn.
-//
-// it returns pipenet address of local end of connection.
-func (c *conn) LocalAddr() net.Addr {
-	return c.socket.addr()
-}
-
-// RemoteAddr implements net.Conn.
-//
-// it returns pipenet address of remote end of connection.
-func (c *conn) RemoteAddr() net.Addr {
-	return c.peersk.addr()
-}
-
-// ----------------------------------------
-
-// allocFreeSocket finds first free port and allocates socket entry for it.
-//
-// must be called with Network.mu held.
-func (h *Host) allocFreeSocket() *socket {
-	// find first free port
-	port := 1 // never allocate port 0 - it is used for autobind on listen only
-	for ; port < len(h.socketv); port++ {
-		if h.socketv[port] == nil {
-			break
-		}
-	}
-	// if all busy it exits with port >= len(h.socketv)
-
-	// grow if needed
-	for port >= len(h.socketv) {
-		h.socketv = append(h.socketv, nil)
+//	defer r.regerr(&err, "operation", arg1, arg2, ...)
+func (r *ramRegistry) regerr(errp *error, op string, args ...interface{}) {
+	if *errp == nil {
+		return
 	}
 
-	sk := &socket{host: h, port: port}
-	h.socketv[port] = sk
-	return sk
-}
-
-// empty checks whether socket's both conn and listener are all nil.
-func (sk *socket) empty() bool {
-	return sk.conn == nil && sk.listener == nil
-}
-
-// addr returns address corresponding to socket.
-func (sk *socket) addr() *Addr {
-	h := sk.host
-	return &Addr{Net: h.Network(), Host: h.name, Port: sk.port}
-}
-
-func (a *Addr) Network() string { return a.Net }
-func (a *Addr) String() string  { return net.JoinHostPort(a.Host, strconv.Itoa(a.Port)) }
-
-// ParseAddr parses addr into pipenet address.
-func (n *Network) ParseAddr(addr string) (*Addr, error) {
-	host, portstr, err := net.SplitHostPort(addr)
-	if err != nil {
-		return nil, err
+	*errp = &virtnet.RegistryError{
+		Registry: r.name,
+		Op:       op,
+		Args:     args,
+		Err:      *errp,
 	}
-	port, err := strconv.Atoi(portstr)
-	if err != nil || port < 0 {
-		return nil, &net.AddrError{Err: "invalid port", Addr: addr}
-	}
-	return &Addr{Net: n.Network(), Host: host, Port: port}, nil
 }
-
-// Addr returns address where listener is accepting incoming connections.
-func (l *listener) Addr() net.Addr {
-	return l.socket.addr()
-}
-
-// Network returns full network name of this network.
-func (n *Network) Network() string { return NetPrefix + n.name }
-
-// Network returns full network name of underlying network.
-func (h *Host) Network() string { return h.network.Network() }
-
-// Name returns host name.
-func (h *Host) Name() string { return h.name }
