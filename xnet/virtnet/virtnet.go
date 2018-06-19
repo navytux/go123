@@ -45,8 +45,9 @@
 // Starting from SubNetwork one can create Hosts and from those exchange data
 // throughout whole network.
 //
-// Please see package lab.nexedi.com/kirr/go123/xnet/pipenet for particular
-// well-known virtnet-based network.
+// Please see packages lab.nexedi.com/kirr/go123/xnet/lonet and
+// lab.nexedi.com/kirr/go123/xnet/pipenet for particular well-known
+// virtnet-based networks.
 //
 //
 // Implementing virtnet networks

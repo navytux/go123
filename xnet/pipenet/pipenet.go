@@ -36,6 +36,9 @@
 //
 // Pipenet might be handy for testing interaction of networked applications in 1
 // process without going to OS networking stack.
+//
+// See also package lab.nexedi.com/kirr/go123/xnet/lonet for similar network
+// that can work across several OS-level processes.
 package pipenet
 
 import (
