@@ -28,15 +28,20 @@
 //	h1 := net.Host("abc")
 //	h2 := net.Host("def")
 //
-//	l, err := h1.Listen(":10")       // starts listening on address "abc:10"
+//	l, err := h1.Listen(":10")          // starts listening on address "abc:10"
 //	go func() {
-//		csrv, err := l.Accept()  // csrv will have LocalAddr "abc:10"
+//		csrv, err := l.Accept()     // csrv will have LocalAddr "abc:1"
 //	}()
-//	ccli, err := h2.Dial("abc:10")   // ccli will have RemoteAddr "def:10"
+//	ccli, err := h2.Dial(ctx, "abc:10") // ccli will be connection between "def:1" - "abc:1"
 //
 // Pipenet might be handy for testing interaction of networked applications in 1
 // process without going to OS networking stack.
 package pipenet
+
+// TODO Fix pipenet for TCP semantic: there port(accepted) = port(listen), i.e.
+//     When we connect www.nexedi.com:80, remote addr of socket will have port 80.
+//     Likewise on server side accepted socket will have local port 80.
+//     The connection should be thus fully identified by src-dst address pair.
 
 import (
 	"context"
