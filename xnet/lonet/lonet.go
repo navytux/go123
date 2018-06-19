@@ -57,6 +57,13 @@
 // Once again lonet is similar to pipenet, but since it works via OS TCP stack
 // it could be handy for testing networked application when there are several
 // OS-level processes involved.
+//
+// Package lonet also provides corresponding Python package for accessing lonet
+// networks from Python(*).
+//
+// --------
+//
+// (*) use https://pypi.org/project/pygopath to import.
 package lonet
 
 // Lonet organization

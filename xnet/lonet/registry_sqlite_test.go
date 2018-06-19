@@ -153,3 +153,31 @@ func TestRegistrySQLite(t *testing.T) {
 		t.Fatalf("network mismatch: error:\nhave: %q\nwant: %q", err.Error(), errWant)
 	}
 }
+
+
+// verify that go and python implementations of sqlite registry understand each other.
+func TestRegistrySQLitePyGo(t *testing.T) {
+	needPy(t)
+
+	work := xworkdir(t)
+	dbpath := work + "/1.db"
+
+	r1, err := openRegistrySQLite(bg, dbpath, "ccc")
+	X(err)
+
+	t1 := &registryTester{t, r1}
+	t1.Query("α", ø)
+	t1.Announce("α", "alpha:1234")
+	t1.Announce("α", "alpha:1234", DUP)
+	t1.Announce("α", "alpha:1235", DUP)
+	t1.Query("α", "alpha:1234")
+	t1.Query("β", ø)
+
+	// in python: check/modify the registry
+	err = pytest("-k", "test_registry_pygo", "--registry-dbpath", dbpath, "lonet_test.py")
+	X(err)
+
+	// back in go: python must have set β + α should stay the same
+	t1.Query("β", "beta:py")
+	t1.Query("α", "alpha:1234")
+}
