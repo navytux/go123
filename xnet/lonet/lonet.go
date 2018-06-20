@@ -63,7 +63,7 @@
 //
 // --------
 //
-// (*) use https://pypi.org/project/pygopath to import.
+// (*) use https://pypi.org/project/pygolang to import.
 package lonet
 
 // Lonet organization

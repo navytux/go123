@@ -18,9 +18,9 @@
 # See COPYING file for full licensing terms.
 # See https://www.nexedi.com/licensing for rationale and options.
 
-import gopath
-xerr  = gopath.gimport('lab.nexedi.com/kirr/go123/xerr')
-lonet = gopath.gimport('lab.nexedi.com/kirr/go123/xnet/lonet')
+from golang import gimport
+xerr  = gimport('lab.nexedi.com/kirr/go123/xerr')
+lonet = gimport('lab.nexedi.com/kirr/go123/xnet/lonet')
 
 from threading import Thread
 from cStringIO import StringIO

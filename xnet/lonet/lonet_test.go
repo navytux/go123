@@ -121,12 +121,12 @@ func needPy(t *testing.T) {
 	if havePy {
 		return
 	}
-	t.Skipf("skipping: python/pygopath/pytest are not available")
+	t.Skipf("skipping: python/pygolang/pytest are not available")
 }
 
 func TestMain(m *testing.M) {
 	// check whether we have python + infrastructure for tests
-	cmd := exec.Command("python", "-c", "import gopath, pytest")
+	cmd := exec.Command("python", "-c", "import golang, pytest")
 	err := cmd.Run()
 	if err == nil {
 		havePy = true

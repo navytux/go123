@@ -33,19 +33,10 @@ import functools
 import threading
 import logging as log
 
-import gopath
-golang = gopath.gimport('lab.nexedi.com/kirr/go123/golang')
-method  = golang.method
-go      = golang.go
-chan    = golang.chan
-select  = golang.select
-default = golang.default
-panic   = golang.panic
+from golang import method, go, chan, select, default, panic, gimport
+from golang.gcompat import qq
 
-gcompat = gopath.gimport('lab.nexedi.com/kirr/go123/golang/gcompat')
-qq  = gcompat.qq
-
-xerr    = gopath.gimport('lab.nexedi.com/kirr/go123/xerr')
+xerr    = gimport('lab.nexedi.com/kirr/go123/xerr')
 Error   = xerr.Error
 errctx  = xerr.context
 errcause= xerr.cause
