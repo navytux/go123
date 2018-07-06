@@ -1,5 +1,5 @@
-// Copyright (C) 2017  Nexedi SA and Contributors.
-//                     Kirill Smelkov <kirr@nexedi.com>
+// Copyright (C) 2017-2018  Nexedi SA and Contributors.
+//                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
 // it under the terms of the GNU General Public License version 3, or (at your
@@ -17,14 +17,14 @@
 // See COPYING file for full licensing terms.
 // See https://www.nexedi.com/licensing for rationale and options.
 
-// Package xbytes provides additional utilities for working with byte slices
+// Package xbytes provides additional utilities for working with byte slices.
 package xbytes
 
 import (
 	"bytes"
 )
 
-// ContainsByte is like bytes.ContainsRune but a bit faster
+// ContainsByte is like bytes.ContainsRune but a bit faster.
 func ContainsByte(s []byte, c byte) bool {
 	return bytes.IndexByte(s, c) >= 0
 }
