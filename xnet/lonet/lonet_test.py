@@ -18,7 +18,7 @@
 # See COPYING file for full licensing terms.
 # See https://www.nexedi.com/licensing for rationale and options.
 
-from golang import gimport
+from golang import gimport, defer, func
 xerr  = gimport('lab.nexedi.com/kirr/go123/xerr')
 lonet = gimport('lab.nexedi.com/kirr/go123/xnet/lonet')
 
@@ -41,22 +41,20 @@ def xwrite(sk, data):
 
 # _test_virtnet_basic runs basic tests on a virtnet network implementation.
 # (this follows virtnettest.TestBasic)
+@func
 def _test_virtnet_basic(subnet):
     # (verifying that error log stays empty)
     errorlog  = StringIO()
     errorlogh = log.StreamHandler(errorlog)
     l = log.getLogger()
     l.addHandler(errorlogh)
-
-    try:
-        __test_virtnet_basic(subnet)
-    finally:
-        subnet.close()
-
+    def _():
         l.removeHandler(errorlogh)
         assert errorlog.getvalue() == ""
+    defer(_)
 
-def __test_virtnet_basic(subnet):
+    defer(subnet.close)
+
     def xaddr(addr):
         return lonet.Addr.parse(subnet.network(), addr)
 
@@ -143,14 +141,11 @@ def test_lonet_py_basic():
 
 
 # test interaction with lonet.go
+@func
 def test_lonet_py_go(network):
     subnet = lonet.join(network)
-    try:
-        _test_lonet_py_go(subnet)
-    finally:
-        subnet.close()
+    defer(subnet.close)
 
-def _test_lonet_py_go(subnet):
     def xaddr(addr):
         return lonet.Addr.parse(subnet.network(), addr)
 
