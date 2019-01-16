@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# Copyright (C) 2018  Nexedi SA and Contributors.
-#                     Kirill Smelkov <kirr@nexedi.com>
+# Copyright (C) 2018-2019  Nexedi SA and Contributors.
+#                          Kirill Smelkov <kirr@nexedi.com>
 #
 # This program is free software: you can Use, Study, Modify and Redistribute
 # it under the terms of the GNU General Public License version 3, or (at your
@@ -236,7 +236,8 @@ def trace_entry(func, eventname):
 
 # ----------------------------------------
 
-import os, sys, code, runpy
+import os, sys
+from gpython import pymain
 
 def usage(out):
     print >>out, "Usage: pyruntraced <fd> <trace>* -- ..."
@@ -288,47 +289,8 @@ def main():
         # tracing code.
         execfile(t, globals())
 
-
-    # now mimic `python ...`        # XXX -> mimicpython(argv) ? pythonmain(argv) ?
-
-    # interactive console
-    if not argv:
-        code.interact()
-        return
-
-    # -c command
-    if argv[0] == '-c':
-        sys.argv = argv[0:1] + argv[2:] # python leaves '-c' as argv[0]
-
-        # exec with the same globals `python -c ...` does
-        g = {'__name__':    '__main__',
-             '__doc__':     None,
-             '__package__': None}
-        exec argv[1] in g
-
-    # -m module
-    elif argv[0] == '-m':
-        # search sys.path for module and run corresponding .py file as script
-        sys.argv = argv[1:]
-        runpy.run_module(sys.argv[0], init_globals={'__doc__': None}, run_name='__main__')
-
-    elif argv[0].startswith('-'):
-        die("invalid option '%s'" % argv[0])
-
-    # file
-    else:
-        sys.argv = argv
-        filepath = argv[0]
-
-        # exec with same globals `python file.py` does
-        # XXX use runpy.run_path() instead?
-        g = {'__name__':    '__main__',
-             '__file__':    filepath,
-             '__doc__':     None,
-             '__package__': None}
-        execfile(filepath, g)
-
-    return
+    # now mimic `python ...`
+    pymain(argv)
 
 
 if __name__ == '__main__':
