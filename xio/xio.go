@@ -1,5 +1,5 @@
-// Copyright (C) 2017  Nexedi SA and Contributors.
-//                     Kirill Smelkov <kirr@nexedi.com>
+// Copyright (C) 2017-2019  Nexedi SA and Contributors.
+//                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
 // it under the terms of the GNU General Public License version 3, or (at your
@@ -39,7 +39,7 @@ func (cr *CountedReader) InputOffset() int64 {
 	return cr.nread
 }
 
-// CountReader wraps r with CountedReader
+// CountReader wraps r with CountedReader.
 func CountReader(r io.Reader) *CountedReader {
 	return &CountedReader{r, 0}
 }

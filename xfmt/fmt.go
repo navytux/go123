@@ -1,5 +1,5 @@
-// Copyright (C) 2017  Nexedi SA and Contributors.
-//                     Kirill Smelkov <kirr@nexedi.com>
+// Copyright (C) 2017-2019  Nexedi SA and Contributors.
+//                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
 // it under the terms of the GNU General Public License version 3, or (at your
@@ -46,28 +46,29 @@ const (
 	hexdigits = "0123456789abcdef"
 )
 
-// Stringer is interface for natively formatting a value representation via xfmt
+// Stringer is interface for natively formatting a value representation via xfmt.
 type Stringer interface {
 	// XFmtString method is used to append formatted value to destination buffer
 	// The grown buffer have to be returned
 	XFmtString(b []byte) []byte
 }
 
-// Buffer provides syntactic sugar for formatting mimicking fmt.Printf style
+// Buffer provides syntactic sugar for formatting mimicking fmt.Printf style.
+//
 // XXX combine with bytes.Buffer ?
 type Buffer []byte
 
-// Reset empties the buffer keeping underlying storage for future formattings
+// Reset empties the buffer keeping underlying storage for future formattings.
 func (b *Buffer) Reset() {
 	*b = (*b)[:0]
 }
 
-// Bytes returns buffer storage as []byte
+// Bytes returns buffer storage as []byte.
 func (b Buffer) Bytes() []byte {
 	return []byte(b)
 }
 
-// Append appends to b formatted x
+// Append appends to b formatted x.
 //
 // NOTE sadly since x is interface it makes real value substituted to it
 // 	escape to heap (not so a problem since usually they already are) but then also
@@ -78,54 +79,54 @@ func Append(b []byte, x Stringer) []byte {
 	return x.XFmtString(b)
 }
 
-// V, similarly to %v, adds x formatted by default rules
+// V, similarly to %v, adds x formatted by default rules.
 func (b *Buffer) V(x Stringer) *Buffer {
 	*b = Append(*b, x)
 	return b
 }
 
-// S appends string formatted by %s
+// S appends string formatted by %s.
 func (b *Buffer) S(s string) *Buffer {
 	*b = append(*b, s...)
 	return b
 }
 
-// Sb appends []byte formatted by %s
+// Sb appends []byte formatted by %s.
 func (b *Buffer) Sb(x []byte) *Buffer {
 	*b = append(*b, x...)
 	return b
 }
 
-// Q appends string formatted by %q
+// Q appends string formatted by %q.
 func (b *Buffer) Q(s string) *Buffer {
 	*b = strconv.AppendQuote(*b, s)
 	return b
 }
 
-// Qb appends []byte formatted by %q
+// Qb appends []byte formatted by %q.
 func (b *Buffer) Qb(s []byte) *Buffer {
 	*b = strconv.AppendQuote(*b, mem.String(s))
 	return b
 }
 
-// Qcb appends byte formatted by %q
+// Qcb appends byte formatted by %q.
 func (b *Buffer) Qcb(c byte) *Buffer {
 	return b.Qc(rune(c))
 }
 
-// Qc appends rune formatted by %q
+// Qc appends rune formatted by %q.
 func (b *Buffer) Qc(c rune) *Buffer {
 	*b = strconv.AppendQuoteRune(*b, c)
 	return b
 }
 
-// Cb appends byte formatted by %c
+// Cb appends byte formatted by %c.
 func (b *Buffer) Cb(c byte) *Buffer {
 	*b = append(*b, c)
 	return b
 }
 
-// AppendRune appends to b UTF-8 encoding of r
+// AppendRune appends to b UTF-8 encoding of r.
 func AppendRune(b []byte, r rune) []byte {
 	l := len(b)
 	b = xbytes.Grow(b, utf8.UTFMax)
@@ -133,31 +134,31 @@ func AppendRune(b []byte, r rune) []byte {
 	return b[:l+n]
 }
 
-// C appends rune formatted by %c
+// C appends rune formatted by %c.
 func (b *Buffer) C(r rune) *Buffer {
 	*b = AppendRune(*b, r)
 	return b
 }
 
-// D appends int formatted by %d
+// D appends int formatted by %d.
 func (b *Buffer) D(i int) *Buffer {
 	*b = strconv.AppendInt(*b, int64(i), 10)
 	return b
 }
 
-// D64 appends int64 formatted by %d
+// D64 appends int64 formatted by %d.
 func (b *Buffer) D64(i int64) *Buffer {
 	*b = strconv.AppendInt(*b, i, 10)
 	return b
 }
 
-// X appends int formatted by %x
+// X appends int formatted by %x.
 func (b *Buffer) X(i int) *Buffer {
 	*b = strconv.AppendInt(*b, int64(i), 16)
 	return b
 }
 
-// AppendHex appends to b hex representation of x
+// AppendHex appends to b hex representation of x.
 func AppendHex(b []byte, x []byte) []byte {
 	lx := hex.EncodedLen(len(x))
 	lb := len(b)
@@ -166,20 +167,20 @@ func AppendHex(b []byte, x []byte) []byte {
 	return b
 }
 
-// Xb appends []byte formatted by %x
+// Xb appends []byte formatted by %x.
 func (b *Buffer) Xb(x []byte) *Buffer {
 	*b = AppendHex(*b, x)
 	return b
 }
 
-// Xs appends string formatted by %x
+// Xs appends string formatted by %x.
 func (b *Buffer) Xs(x string) *Buffer {
 	return b.Xb(mem.Bytes(x))
 }
 
 // TODO XX = %X
 
-// AppendHex016 appends to b x formatted 16-character hex string
+// AppendHex016 appends to b x formatted 16-character hex string.
 func AppendHex016(b []byte, x uint64) []byte {
         // like sprintf("%016x") but faster and less allocations
 	l := len(b)
@@ -192,7 +193,7 @@ func AppendHex016(b []byte, x uint64) []byte {
 	return b
 }
 
-// X016, similarly to %016x, adds hex representation of uint64 x
+// X016, similarly to %016x, adds hex representation of uint64 x.
 func (b *Buffer) X016(x uint64) *Buffer {
 	*b = AppendHex016(*b, x)
 	return b

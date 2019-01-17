@@ -1,4 +1,4 @@
-// Copyright (C) 2015-2017  Nexedi SA and Contributors.
+// Copyright (C) 2015-2019  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -17,7 +17,7 @@
 // See COPYING file for full licensing terms.
 // See https://www.nexedi.com/licensing for rationale and options.
 
-// Package my provides easy way to determine current function's name and other context
+// Package my provides easy way to determine current function's name and context.
 package my
 
 import (
@@ -37,15 +37,19 @@ func _myframe(nskip int) runtime.Frame {
 	return f
 }
 
-// FuncName returns name of currently running function (caller of FuncName())
+// FuncName returns name of currently running function.
+//
+// i.e. the name of FuncName caller.
+//
 // name is fully qualified package/name.function(.x)
 func FuncName() string {
 	f := _myframe(3)
 	return f.Function
 }
 
-// PkgName returns name of currently running function's package
-// package is fully qualified package/name
+// PkgName returns name of currently running function's package.
+//
+// package is fully qualified package/name.
 func PkgName() string {
 	f := _myframe(3)
 	myfunc := f.Function
@@ -63,19 +67,19 @@ func PkgName() string {
 	return myfunc[:iafterslash+idot]
 }
 
-// File returns path of currently running function's file
+// File returns path of currently running function's file.
 func File() string {
 	f := _myframe(3)
 	return f.File
 }
 
-// Line returns currently running function's line
+// Line returns currently running function's line.
 func Line() int {
 	f := _myframe(3)
 	return f.Line
 }
 
-// Frame returns currently running functions's frame
+// Frame returns currently running functions's frame.
 func Frame() runtime.Frame {
 	return _myframe(3)
 }

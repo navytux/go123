@@ -1,5 +1,5 @@
-// Copyright (C) 2017  Nexedi SA and Contributors.
-//                     Kirill Smelkov <kirr@nexedi.com>
+// Copyright (C) 2017-2019  Nexedi SA and Contributors.
+//                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
 // it under the terms of the GNU General Public License version 3, or (at your
@@ -26,7 +26,7 @@ import (
 	"sort"
 )
 
-// Buffer is bytes.Buffer + syntatic sugar
+// Buffer is bytes.Buffer + syntatic sugar.
 type Buffer struct {
 	bytes.Buffer
 }
@@ -36,7 +36,7 @@ func (b *Buffer) emit(format string, argv ...interface{}) {
 }
 
 
-// StrSet is set<string>
+// StrSet is set<string>.
 type StrSet map[string]struct{}
 
 func (s StrSet) Add(itemv ...string) {
@@ -54,7 +54,7 @@ func (s StrSet) Has(item string) bool {
 	return has
 }
 
-// Itemv returns ordered slice of set items
+// Itemv returns ordered slice of set items.
 func (s StrSet) Itemv() []string {
 	itemv := make([]string, 0, len(s))
 	for item := range s {

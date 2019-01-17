@@ -1,4 +1,4 @@
-// Copyright (C) 2017-2018  Nexedi SA and Contributors.
+// Copyright (C) 2017-2019  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -31,7 +31,7 @@ import (
 
 // Networker is interface representing access-point to a streaming network.
 type Networker interface {
-	// Network returns name of the network
+	// Network returns name of the network.
 	Network() string
 
 	// Name returns name of the access-point on the network.

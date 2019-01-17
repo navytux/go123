@@ -1,4 +1,4 @@
-// Copyright (C) 2017-2018  Nexedi SA and Contributors.
+// Copyright (C) 2017-2019  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -25,7 +25,7 @@ import (
 	"net"
 )
 
-// NetTrace wraps underlying networker with IO tracing layer
+// NetTrace wraps underlying networker with IO tracing layer.
 //
 // Tracing is done via calling trace func right after corresponding networking
 // event happenned.  No synchronization for notification is performed - if one
@@ -45,7 +45,7 @@ func NetTrace(inner Networker, tracer Tracer) Networker {
 	return &netTrace{inner, tracer}
 }
 
-// Tracer is the interface that needs to be implemented by network trace receivers
+// Tracer is the interface that needs to be implemented by network trace receivers.
 type Tracer interface {
 	TraceNetDial(*TraceDial)
 	TraceNetConnect(*TraceConnect)
@@ -66,13 +66,13 @@ type TraceConnect struct {
 	Dialed   string
 }
 
-// TraceListen is event corresponding to network listening
+// TraceListen is event corresponding to network listening.
 type TraceListen struct {
 	// XXX also put networker?
 	Laddr net.Addr
 }
 
-// TraceTx is event corresponding to network transmission
+// TraceTx is event corresponding to network transmission.
 type TraceTx struct {
 	// XXX also put network somehow?
 	Src, Dst net.Addr
@@ -114,7 +114,7 @@ func (nt *netTrace) Listen(laddr string) (net.Listener, error) {
 	return &netTraceListener{nt, l}, nil
 }
 
-// netTraceListener wraps net.Listener to wrap accepted connections with traceConn
+// netTraceListener wraps net.Listener to wrap accepted connections with traceConn.
 type netTraceListener struct {
 	nt           *netTrace
 	net.Listener
@@ -128,7 +128,7 @@ func (ntl *netTraceListener) Accept() (net.Conn, error) {
 	return &traceConn{ntl.nt, c}, nil
 }
 
-// traceConn wraps net.Conn and notifies tracer on Writes
+// traceConn wraps net.Conn and notifies tracer on Writes.
 type traceConn struct {
 	nt       *netTrace
 	net.Conn

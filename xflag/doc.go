@@ -1,2 +1,2 @@
-// Package xflag provides addons to standard package flag
+// Package xflag provides addons to standard package flag.
 package xflag

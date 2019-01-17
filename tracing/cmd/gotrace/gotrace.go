@@ -1,5 +1,5 @@
-// Copyright (C) 2018  Nexedi SA and Contributors.
-//                     Kirill Smelkov <kirr@nexedi.com>
+// Copyright (C) 2018-2019  Nexedi SA and Contributors.
+//                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
 // it under the terms of the GNU General Public License version 3, or (at your
@@ -62,7 +62,7 @@ import (
 	"lab.nexedi.com/kirr/go123/xerr"
 )
 
-// traceEvent represents 1 trace:event declaration
+// traceEvent represents 1 trace:event declaration.
 type traceEvent struct {
 	Pos  token.Position
 	Pkgt *Package // package this trace event is part of
@@ -84,14 +84,14 @@ type traceEvent struct {
 	*ast.FuncDecl
 }
 
-// traceImport represents 1 trace:import directive
+// traceImport represents 1 trace:import directive.
 type traceImport struct {
 	Pos     token.Position
 	PkgName string // "" if import name was not explicitly specified
 	PkgPath string
 }
 
-// traceImported represents 1 imported trace:event
+// traceImported represents 1 imported trace:event.
 type traceImported struct {
 	*traceEvent                   // imported event
 	ImportSpec  *traceImport      // imported via this spec
@@ -99,7 +99,7 @@ type traceImported struct {
 	ImportedAs  map[string]string // in context where some packages are imported as named (pkgpath -> pkgname)
 }
 
-// Package represents tracing-related information about a package
+// Package represents tracing-related information about a package.
 type Package struct {
 	Pkgi *loader.PackageInfo // original non-augmented package
 
@@ -228,7 +228,7 @@ func (p *Package) parseTraceImport(pos token.Position, text string) (*traceImpor
 	return &traceImport{Pos: pos, PkgName: pkgname, PkgPath: pkgpath}, nil
 }
 
-// progImporter is types.Importer that imports packages from loaded loader.Program
+// progImporter is types.Importer that imports packages from loaded loader.Program .
 type progImporter struct {
 	prog *loader.Program
 }
@@ -242,7 +242,7 @@ func (pi *progImporter) Import(path string) (*types.Package, error) {
 	return pkgi.Pkg, nil
 }
 
-// packageTrace returns tracing information about a package
+// packageTrace returns tracing information about a package.
 func packageTrace(prog *loader.Program, pkgi *loader.PackageInfo) (*Package, error) {
 	// prepare Package with typechecker ready to typecheck trace files
 	// (to get trace func argument types)
@@ -339,21 +339,21 @@ func packageTrace(prog *loader.Program, pkgi *loader.PackageInfo) (*Package, err
 	return p, nil
 }
 
-// byEventName provides []*traceEvent ordering by event name
+// byEventName provides []*traceEvent ordering by event name.
 type byEventName []*traceEvent
 
 func (v byEventName) Less(i, j int) bool { return v[i].Name.Name < v[j].Name.Name }
 func (v byEventName) Swap(i, j int)      { v[i], v[j] = v[j], v[i] }
 func (v byEventName) Len() int           { return len(v) }
 
-// byPkgPath provides []*traceImport ordering by package path
+// byPkgPath provides []*traceImport ordering by package path.
 type byPkgPath []*traceImport
 
 func (v byPkgPath) Less(i, j int) bool { return v[i].PkgPath < v[j].PkgPath }
 func (v byPkgPath) Swap(i, j int)      { v[i], v[j] = v[j], v[i] }
 func (v byPkgPath) Len() int           { return len(v) }
 
-// SplitTests splits package into main and test parts, each covering trace-related things accordingly
+// SplitTests splits package into main and test parts, each covering trace-related things accordingly.
 func (p *Package) SplitTests() (testPkg *Package) {
 	__ := *p
 	testPkg = &__
@@ -387,7 +387,7 @@ func (p *Package) SplitTests() (testPkg *Package) {
 
 // ----------------------------------------
 
-// Argv returns comma-separated argument-list
+// Argv returns comma-separated argument-list.
 func (te *traceEvent) Argv() string {
 	argv := []string{}
 
@@ -446,7 +446,7 @@ func (te *traceEvent) ArgvTypedRelativeTo(pkg *types.Package, importedAs map[str
 	return strings.Join(argv, ", ")
 }
 
-// NeedPkgv returns packages that are needed for argument types
+// NeedPkgv returns packages that are needed for argument types.
 func (te *traceEvent) NeedPkgv() []string {
 	pkgset := StrSet{ /*pkgpath*/ }
 	qf := func(pkg *types.Package) string {
@@ -463,7 +463,7 @@ func (te *traceEvent) NeedPkgv() []string {
 	return pkgset.Itemv()
 }
 
-// ImportSpec returns string representation of import spec
+// ImportSpec returns string representation of import spec.
 func (ti *traceImport) ImportSpec() string {
 	t := ti.PkgName
 	if t != "" {
@@ -473,7 +473,7 @@ func (ti *traceImport) ImportSpec() string {
 	return t
 }
 
-// traceEventCodeTmpl is code template generated for one trace event
+// traceEventCodeTmpl is code template generated for one trace event.
 var traceEventCodeTmpl = template.Must(template.New("traceevent").Parse(`
 // traceevent: {{.Name}}({{.ArgvTyped}})
 
@@ -512,14 +512,14 @@ func {{.Name}}_Attach(pg *tracing.ProbeGroup, probe func({{.ArgvTyped}})) *traci
 }
 `))
 
-// traceEventImportTmpl is code template generated for importing one trace event
+// traceEventImportTmpl is code template generated for importing one trace event.
 var traceEventImportTmpl = template.Must(template.New("traceimport").Parse(`
 {{/* function to attach a probe to tracepoint imported via go:linkname */ -}}
 //go:linkname {{.ImportSpec.PkgName}}_{{.Name}}_Attach {{.ImportSpec.PkgPath}}.{{.Name}}_Attach
 func {{.ImportSpec.PkgName}}_{{.Name}}_Attach(*tracing.ProbeGroup, func({{.ArgvTypedRelativeTo .ImporterPkg .ImportedAs}})) *tracing.Probe
 `))
 
-// traceEventImportCheckTmpl is code template generated to check consistency with one imported package
+// traceEventImportCheckTmpl is code template generated to check consistency with one imported package.
 var traceEventImportCheckTmpl = template.Must(template.New("traceimportcheck").Parse(`
 {{/* linking will fail if trace import code becomes out of sync wrt imported package */ -}}
 // rerun "gotrace gen" if you see link failure ↓↓↓
@@ -528,7 +528,7 @@ func {{.ImportSpec.PkgName}}_trace_exporthash()
 func init() { {{.ImportSpec.PkgName}}_trace_exporthash() }
 `))
 
-// magic begins all files generated by gotrace
+// magic begins all files generated by gotrace.
 const magic = "// Code generated by lab.nexedi.com/kirr/go123/tracing/cmd/gotrace; DO NOT EDIT.\n"
 
 // checkCanWrite checks whether it is safe to write to file at path.
@@ -553,7 +553,7 @@ func checkCanWrite(path string) error {
 	return nil
 }
 
-// writeFile writes data to a file at path after checking it is safe to write there
+// writeFile writes data to a file at path after checking it is safe to write there.
 func writeFile(path string, data []byte) error {
 	err := checkCanWrite(path)
 	if err != nil {
@@ -563,7 +563,7 @@ func writeFile(path string, data []byte) error {
 	return ioutil.WriteFile(path, data, 0666)
 }
 
-// removeFile make sure there is no file at path after checking it is safe to write to that file
+// removeFile make sure there is no file at path after checking it is safe to write to that file.
 func removeFile(path string) error {
 	err := checkCanWrite(path)
 	if err != nil {
@@ -597,7 +597,7 @@ type Program struct {
 	loaderConf *loader.Config
 }
 
-// NewProgram constructs new empty Program ready to load packages according to specified build context
+// NewProgram constructs new empty Program ready to load packages according to specified build context.
 func NewProgram(ctxt *build.Context, cwd string) *Program {
 	// adjust build context to filter-out ztrace* files when discovering packages
 	//

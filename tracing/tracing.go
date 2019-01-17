@@ -1,5 +1,5 @@
-// Copyright (C) 2017  Nexedi SA and Contributors.
-//                     Kirill Smelkov <kirr@nexedi.com>
+// Copyright (C) 2017-2019  Nexedi SA and Contributors.
+//                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
 // it under the terms of the GNU General Public License version 3, or (at your
@@ -225,7 +225,7 @@ func Lock() {
 	xruntime.RaceIgnoreBegin()
 }
 
-// Unlock is the opposite to Lock and returns with the world resumed
+// Unlock is the opposite to Lock and returns with the world resumed.
 func Unlock() {
 	xruntime.RaceIgnoreEnd()
 	atomic.StoreInt32(&traceLocked, 0)
@@ -233,14 +233,14 @@ func Unlock() {
 	traceMu.Unlock()
 }
 
-// verifyLocked makes sure tracing is locked and panics otherwise
+// verifyLocked makes sure tracing is locked and panics otherwise.
 func verifyLocked() {
 	if atomic.LoadInt32(&traceLocked) == 0 {
 		panic("tracing must be locked")
 	}
 }
 
-// verifyUnlocked makes sure tracing is not locked and panics otherwise
+// verifyUnlocked makes sure tracing is not locked and panics otherwise.
 func verifyUnlocked() {
 	if atomic.LoadInt32(&traceLocked) != 0 {
 		panic("tracing must be unlocked")
@@ -248,7 +248,7 @@ func verifyUnlocked() {
 }
 
 
-// Probe describes one probe attached to a tracepoint
+// Probe describes one probe attached to a tracepoint.
 type Probe struct {
 	// NOTE .next must come first as probe list header is only 1 word and
 	// is treated as *Probe on probe attach/detach - accessing/modifying its .next

@@ -1,5 +1,5 @@
-// Copyright (C) 2017  Nexedi SA and Contributors.
-//                     Kirill Smelkov <kirr@nexedi.com>
+// Copyright (C) 2017-2019  Nexedi SA and Contributors.
+//                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
 // it under the terms of the GNU General Public License version 3, or (at your
@@ -29,12 +29,12 @@ import (
 	"lab.nexedi.com/kirr/go123/xbytes"
 )
 
-// AppendQuotePy appends to buf Python quoting of s
+// AppendQuotePy appends to buf Python quoting of s.
 func AppendQuotePy(buf []byte, s string) []byte {
 	return AppendQuotePyBytes(buf, mem.Bytes(s))
 }
 
-// AppendQuotePyBytes appends to buf Python quoting of b
+// AppendQuotePyBytes appends to buf Python quoting of b.
 func AppendQuotePyBytes(buf, b []byte) []byte {
 	// smartquotes: choose ' or " as quoting character
 	// https://github.com/python/cpython/blob/v2.7.13-116-g1aa1803b3d/Objects/stringobject.c#L947
@@ -109,13 +109,13 @@ func AppendQuotePyBytes(buf, b []byte) []byte {
 }
 
 
-// Qpy appends string quoted as Python would do
+// Qpy appends string quoted as Python would do.
 func (b *Buffer) Qpy(s string) *Buffer {
 	*b = AppendQuotePy(*b, s)
 	return b
 }
 
-// Qpyb appends []byte quoted as Python would do
+// Qpyb appends []byte quoted as Python would do.
 func (b *Buffer) Qpyb(x []byte) *Buffer {
 	*b = AppendQuotePyBytes(*b, x)
 	return b
@@ -123,7 +123,7 @@ func (b *Buffer) Qpyb(x []byte) *Buffer {
 
 // TODO Qpyc?
 
-// Qpycb appends byte quoted as Python would do for a single-character string
+// Qpycb appends byte quoted as Python would do for a single-character string.
 func (b *Buffer) Qpycb(c byte) *Buffer {
 	*b = AppendQuotePyBytes(*b, []byte{c})	// does not escape
 	return b

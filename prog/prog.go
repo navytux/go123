@@ -1,5 +1,5 @@
-// Copyright (C) 2017  Nexedi SA and Contributors.
-//                     Kirill Smelkov <kirr@nexedi.com>
+// Copyright (C) 2017-2019  Nexedi SA and Contributors.
+//                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
 // it under the terms of the GNU General Public License version 3, or (at your
@@ -33,7 +33,7 @@ import (
 	"runtime/trace"
 )
 
-// Command describes one program subcommand
+// Command describes one program subcommand.
 type Command struct {
 	Name	string
 	Summary	string
@@ -41,10 +41,10 @@ type Command struct {
 	Main	func (argv []string)
 }
 
-// CommandRegistry is ordered collection of Commands
+// CommandRegistry is ordered collection of Commands.
 type CommandRegistry []Command
 
-// Lookup returns Command with corresponding name or nil
+// Lookup returns Command with corresponding name or nil.
 func (cmdv CommandRegistry) Lookup(command string) *Command {
 	for i := range cmdv {
 		if cmdv[i].Name == command {
@@ -54,17 +54,17 @@ func (cmdv CommandRegistry) Lookup(command string) *Command {
 	return nil
 }
 
-// HelpTopic describes one help topic
+// HelpTopic describes one help topic.
 type HelpTopic struct {
 	Name    string
 	Summary string
 	Text    string
 }
 
-// HelpRegistry is ordered collection of HelpTopics
+// HelpRegistry is ordered collection of HelpTopics.
 type HelpRegistry []HelpTopic
 
-// Lookup returns HelpTopic with corresponding name or nil
+// Lookup returns HelpTopic with corresponding name or nil.
 func (helpv HelpRegistry) Lookup(topic string) *HelpTopic {
 	for i := range helpv {
 		if helpv[i].Name == topic {
@@ -99,7 +99,7 @@ func Fatal(v ...interface{}) {
 	Exit(1)
 }
 
-// programExit is thrown when Exit or Fatal are called
+// programExit is thrown when Exit or Fatal are called.
 type programExit struct {
 	code int
 }
@@ -200,7 +200,7 @@ func (prog *MainProg) main() {
 	cmd.Main(argv)
 }
 
-// usage shows usage text for whole program
+// usage shows usage text for whole program.
 func (prog *MainProg) usage() {
 	w := os.Stderr
 	fmt.Fprintf(w,
@@ -257,7 +257,7 @@ Use "%s help [topic]" for more information about that topic.
 }
 
 
-// help shows general help or help for a command/topic
+// help shows general help or help for a command/topic.
 func (prog *MainProg) help(argv []string) {
 	if len(argv) < 2 {	// help topic ...
 		prog.usage()

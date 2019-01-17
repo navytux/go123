@@ -1,5 +1,5 @@
-// Copyright (C) 2017  Nexedi SA and Contributors.
-//                     Kirill Smelkov <kirr@nexedi.com>
+// Copyright (C) 2017-2019  Nexedi SA and Contributors.
+//                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
 // it under the terms of the GNU General Public License version 3, or (at your
@@ -40,20 +40,21 @@ type Head struct {
 func (h *Head) Next() *Head { return h.next }
 func (h *Head) Prev() *Head { return h.prev }
 
-// Init initializes a head making it point to itself via .next and .prev
+// Init initializes a head making it point to itself via .next and .prev .
 func (h *Head) Init() {
 	h.next = h
 	h.prev = h
 }
 
-// Delete deletes h from its list
+// Delete deletes h from its list.
 func (h *Head) Delete() {
 	h.next.prev = h.prev
 	h.prev.next = h.next
 	h.Init()
 }
 
-// MoveBefore moves a to be before b
+// MoveBefore moves a to be before b.
+//
 // XXX ok to move if a was not previously on the list?
 func (a *Head) MoveBefore(b *Head) {
 	a.Delete()

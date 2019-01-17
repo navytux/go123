@@ -1,4 +1,4 @@
-// Copyright (C) 2015-2017  Nexedi SA and Contributors.
+// Copyright (C) 2015-2019  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -17,15 +17,16 @@
 // See COPYING file for full licensing terms.
 // See https://www.nexedi.com/licensing for rationale and options.
 
-// Package xruntime provides addons to standard package runtime
+// Package xruntime provides addons to standard package runtime.
 package xruntime
 
 import (
 	"runtime"
 )
 
-// Traceback returns current calling traceback as []runtime.Frame
-// nskip meaning: the same as in runtime.Callers()
+// Traceback returns current calling traceback as []runtime.Frame .
+//
+// nskip meaning: the same as in runtime.Callers() .
 func Traceback(nskip int) []runtime.Frame {
 	// all callers
 	var pcv = []uintptr{0}

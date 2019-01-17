@@ -1,5 +1,5 @@
-// Copyright (C) 2017  Nexedi SA and Contributors.
-//                     Kirill Smelkov <kirr@nexedi.com>
+// Copyright (C) 2017-2019  Nexedi SA and Contributors.
+//                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
 // it under the terms of the GNU General Public License version 3, or (at your
@@ -19,14 +19,14 @@
 
 // +build go1.9
 
-// Package xmath provides addons to std math package
+// Package xmath provides addons to std math package.
 package xmath
 
 import (
 	"math/bits"
 )
 
-// CeilPow2 returns minimal y >= x, such that y = 2^i
+// CeilPow2 returns minimal y >= x, such that y = 2^i.
 func CeilPow2(x uint64) uint64 {
 	switch bits.OnesCount64(x) {
 	case 0, 1:
@@ -36,7 +36,7 @@ func CeilPow2(x uint64) uint64 {
 	}
 }
 
-// CeilLog2 returns minimal i: 2^i >= x
+// CeilLog2 returns minimal i: 2^i >= x.
 func CeilLog2(x uint64) int {
 	switch bits.OnesCount64(x) {
 	case 0:
@@ -48,7 +48,7 @@ func CeilLog2(x uint64) int {
 	}
 }
 
-// FloorLog2 returns maximal i: 2^i <= x
+// FloorLog2 returns maximal i: 2^i <= x.
 //
 // x=0 gives -> -1.
 func FloorLog2(x uint64) int {

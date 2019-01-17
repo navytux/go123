@@ -1,4 +1,4 @@
-// Copyright (C) 2015-2017  Nexedi SA and Contributors.
+// Copyright (C) 2015-2019  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -17,7 +17,7 @@
 // See COPYING file for full licensing terms.
 // See https://www.nexedi.com/licensing for rationale and options.
 
-// Package xstrings provides addons to standard package strings
+// Package xstrings provides addons to standard package strings.
 package xstrings
 
 import (
@@ -25,7 +25,9 @@ import (
 	"strings"
 )
 
-// split string into lines. The last line, if it is empty, is omitted from the result
+// SplitLines splits string into lines.
+//
+// The last line, if it is empty, is omitted from the result.
 // (rationale is: string.Split("hello\nworld\n", "\n") -> ["hello", "world", ""])
 func SplitLines(s, sep string) []string {
 	sv := strings.Split(s, sep)
@@ -36,7 +38,7 @@ func SplitLines(s, sep string) []string {
 	return sv
 }
 
-// split string by sep and expect exactly 2 parts
+// Split2 splits string by sep and expects exactly 2 parts.
 func Split2(s, sep string) (s1, s2 string, err error) {
 	parts := strings.Split(s, sep)
 	if len(parts) != 2 {
@@ -45,7 +47,11 @@ func Split2(s, sep string) (s1, s2 string, err error) {
 	return parts[0], parts[1], nil
 }
 
-// (head+sep+tail) -> head, tail
+// HeadTail splits string into head & tail.
+//
+// (head+sep+tail) -> head, tail.
+//
+// Note: tail may contain sep.
 func HeadTail(s, sep string) (head, tail string, err error) {
 	parts := strings.SplitN(s, sep, 2)
 	if len(parts) != 2 {
