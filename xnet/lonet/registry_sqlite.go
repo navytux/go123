@@ -1,5 +1,5 @@
-// Copyright (C) 2018  Nexedi SA and Contributors.
-//                     Kirill Smelkov <kirr@nexedi.com>
+// Copyright (C) 2018-2019  Nexedi SA and Contributors.
+//                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
 // it under the terms of the GNU General Public License version 3, or (at your
@@ -26,7 +26,7 @@ import (
 	"fmt"
 
 	"crawshaw.io/sqlite"
-	"crawshaw.io/sqlite/sqliteutil"
+	"crawshaw.io/sqlite/sqlitex"
 
 	"lab.nexedi.com/kirr/go123/xerr"
 	"lab.nexedi.com/kirr/go123/xnet/virtnet"
@@ -48,7 +48,7 @@ import (
 const schemaVer = "lonet.1"
 
 type sqliteRegistry struct {
-	dbpool *sqlite.Pool
+	dbpool *sqlitex.Pool
 
 	uri    string	// URI db was originally opened with
 }
@@ -60,7 +60,7 @@ func openRegistrySQLite(ctx context.Context, dburi, network string) (_ *sqliteRe
 	r := &sqliteRegistry{uri: dburi}
 	defer r.regerr(&err, "open")
 
-	dbpool, err := sqlite.Open(dburi, 0, /* poolSize= */16)	// XXX pool size ok?
+	dbpool, err := sqlitex.Open(dburi, 0, /* poolSize= */16)	// XXX pool size ok?
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func (r *sqliteRegistry) Close() (err error) {
 //
 // connection is first allocated from dbpool and put back after call to f.
 func (r *sqliteRegistry) withConn(ctx context.Context, f func(*sqlite.Conn) error) error {
-	conn := r.dbpool.Get(ctx.Done())
+	conn := r.dbpool.Get(ctx)
 	if conn == nil {
 		// either ctx cancel or dbpool close
 		if ctx.Err() != nil {
@@ -102,13 +102,13 @@ func (r *sqliteRegistry) withConn(ctx context.Context, f func(*sqlite.Conn) erro
 var errNoRows   = errors.New("query: empty result")
 var errManyRows = errors.New("query: multiple results")
 
-// query1 is like sqliteutil.Exec but checks that exactly 1 row is returned.
+// query1 is like sqlitex.Exec but checks that exactly 1 row is returned.
 //
 // if query results in no rows - errNoRows is returned.
 // if query results in more than 1 row - errManyRows is returned.
 func query1(conn *sqlite.Conn, query string, resultf func(stmt *sqlite.Stmt), argv ...interface{}) error {
 	nrow := 0
-	err := sqliteutil.Exec(conn, query, func(stmt *sqlite.Stmt) error {
+	err := sqlitex.Exec(conn, query, func(stmt *sqlite.Stmt) error {
 		if nrow == 1 {
 			return errManyRows
 		}
@@ -131,7 +131,7 @@ func (r *sqliteRegistry) setup(ctx context.Context, network string) (err error) 
 
 	return r.withConn(ctx, func(conn *sqlite.Conn) (err error) {
 		// NOTE: keep in sync wrt top-level text.
-		err = sqliteutil.ExecScript(conn, `
+		err = sqlitex.ExecScript(conn, `
 			CREATE TABLE IF NOT EXISTS hosts (
 				hostname	TEXT NON NULL PRIMARY KEY,
 				osladdr		TEXT NON NULL
@@ -148,7 +148,7 @@ func (r *sqliteRegistry) setup(ctx context.Context, network string) (err error) 
 
 		// do whole checks/init under transaction, so that there is
 		// e.g. no race wrt another process setting config.
-		defer sqliteutil.Save(conn)(&err)
+		defer sqlitex.Save(conn)(&err)
 
 		// check/init schema version
 		ver, err := r.config(conn, "schemaver")
@@ -212,7 +212,7 @@ func (r *sqliteRegistry) config(conn *sqlite.Conn, name string) (value string, e
 func (r *sqliteRegistry) setConfig(conn *sqlite.Conn, name, value string) (err error) {
 	defer xerr.Contextf(&err, "config: set %q = %q", name, value)
 
-	err = sqliteutil.Exec(conn,
+	err = sqlitex.Exec(conn,
 		"INSERT OR REPLACE INTO meta (name, value) VALUES (?, ?)", nil,
 		name, value)
 	return err
@@ -223,7 +223,7 @@ func (r *sqliteRegistry) Announce(ctx context.Context, hostname, osladdr string)
 	defer r.regerr(&err, "announce", hostname, osladdr)
 
 	return r.withConn(ctx, func(conn *sqlite.Conn) error {
-		err := sqliteutil.Exec(conn,
+		err := sqlitex.Exec(conn,
 			"INSERT INTO hosts (hostname, osladdr) VALUES (?, ?)", nil,
 			hostname, osladdr)
 
