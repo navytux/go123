@@ -33,7 +33,7 @@ import functools
 import threading
 import logging as log
 
-from golang import method, go, chan, select, default, panic, gimport
+from golang import func, go, chan, select, default, panic, gimport
 from golang.gcompat import qq
 
 xerr    = gimport('lab.nexedi.com/kirr/go123/xerr')
@@ -220,7 +220,7 @@ class Accept(object):
 # ----------------------------------------
 
 # _shutdown is worker for close and _vnet_down.
-@method(VirtSubNetwork)
+@func(VirtSubNetwork)
 def _shutdown(n, exc):
     if not set_once(n._down_once):
         return
@@ -239,13 +239,13 @@ def _shutdown(n, exc):
 
 
 # close shutdowns subnetwork.
-@method(VirtSubNetwork)
+@func(VirtSubNetwork)
 def close(n):
     with errctx("virtnet %s: close" % qq(n._network)):
         n._shutdown(None)
 
 # _vnet_down shutdowns subnetwork upon engine error.
-@method(VirtSubNetwork)
+@func(VirtSubNetwork)
 def _vnet_down(n, exc):
     # XXX py: errctx here (go does not have) because we do not reraise .downErr in close
     with errctx("virtnet %s: shutdown" % qq(n._network)):
@@ -253,7 +253,7 @@ def _vnet_down(n, exc):
 
 
 # new_host creates new Host with given name.
-@method(VirtSubNetwork)
+@func(VirtSubNetwork)
 def new_host(n, name):
     with errctx("virtnet %s: new host %s" % (qq(n._network), qq(name))):
         n._vnet_newhost(name, n._registry)
@@ -269,14 +269,14 @@ def new_host(n, name):
 
 
 # host returns host on the subnetwork by name.
-@method(VirtSubNetwork)
+@func(VirtSubNetwork)
 def host(n, name):
     with n._hostmu:
         return n._hostmap.get(name)
 
 
 # _shutdown is underlying worker for close.
-@method(Host)
+@func(Host)
 def _shutdown(h):
     if not set_once(h._down_once):
         return
@@ -293,14 +293,14 @@ def _shutdown(h):
                 sk._listener._shutdown()
 
 # close shutdowns host.
-@method(Host)
+@func(Host)
 def close(h):
     with errctx("virtnet %s: host %s: close" % (qq(h._subnet._network), qq(h._name))):
         h._shutdown()
 
 
 # listen starts new listener on the host.
-@method(Host)
+@func(Host)
 def listen(h, laddr):
     if laddr == "":
         laddr = ":0"
@@ -335,13 +335,13 @@ def listen(h, laddr):
 
 
 # _shutdown shutdowns the listener.
-@method(listener)
+@func(listener)
 def _shutdown(l):
     if set_once(l._down_once):
         l._down.close()
 
 # close closes the listener.
-@method(listener)
+@func(listener)
 def close(l):
     l._shutdown()
     if not set_once(l._close_once):
@@ -357,7 +357,7 @@ def close(l):
 
 
 # accept tries to connect to dial called with addr corresponding to our listener.
-@method(listener)
+@func(listener)
 def accept(l):
     h = l._socket._host
 
@@ -412,7 +412,7 @@ def accept(l):
 
 
 # _vnet_accept accepts or rejects incoming connection.
-@method(VirtSubNetwork)
+@func(VirtSubNetwork)
 def _vnet_accept(n, src, dst, netconn):
     with n._hostmu:
         host = n._hostmap.get(dst.host)
@@ -447,7 +447,7 @@ def _vnet_accept(n, src, dst, netconn):
 
 
 # dial dials address on the network.
-@method(Host)
+@func(Host)
 def dial(h, addr):
     with h._sockmu:
         sk = h._allocFreeSocket()
@@ -483,7 +483,7 @@ def dial(h, addr):
 # ---- conn ----
 
 # _shutdown closes underlying network connection.
-@method(conn)
+@func(conn)
 def _shutdown(c):
     if not set_once(c._down_once):
         return
@@ -494,7 +494,7 @@ def _shutdown(c):
 
 
 # close closes network endpoint and unregisters conn from Host.
-@method(conn)
+@func(conn)
 def close(c):
     c._shutdown()
     if set_once(c._close_once):
@@ -512,29 +512,29 @@ def close(c):
 # XXX py: don't bother to override send (Write)
 
 # local_addr returns virtnet address of local end of connection.
-@method(conn)
+@func(conn)
 def local_addr(c):
     return c._socket.addr()
 
 # getsockname returns virtnet address of local end of connection as net.AF_INET (host, port) pair.
-@method(conn)
+@func(conn)
 def getsockname(c):
     return c.local_addr().netaddr()
 
 # remote_addr returns virtnet address of remote end of connection.
-@method(conn)
+@func(conn)
 def remote_addr(c):
     return c._peerAddr
 
 # getpeername returns virtnet address of remote end of connection as net.AF_INET (host, port) pair.
-@method(conn)
+@func(conn)
 def getpeername(c):
     return c.remote_addr().netaddr()
 
 # ----------------------------------------
 
 # _allocFreeSocket finds first free port and allocates socket entry for it.
-@method(Host)
+@func(Host)
 def _allocFreeSocket(h):
     port = 1
     while port < len(h._socketv):
@@ -551,18 +551,18 @@ def _allocFreeSocket(h):
 
 
 # empty checks whether socket's both conn and listener are all nil.
-@method(socket)
+@func(socket)
 def _empty(sk):
     return (sk._conn is None and sk._listener is None)
 
 # addr returns address corresponding to socket.
-@method(socket)
+@func(socket)
 def addr(sk):
     h = sk._host
     return Addr(h.network(), h.name(), sk._port)
 
 # Addr.parse parses addr into virtnet address for named network.
-@method(Addr)
+@func(Addr)
 @staticmethod
 def parse(net, addr):
     try:
@@ -574,7 +574,7 @@ def parse(net, addr):
         raise ValueError('%s is not valid virtnet address' % addr)
 
 # _parseAddr parses addr into virtnet address from host point of view.
-@method(Host)
+@func(Host)
 def _parseAddr(h, addr):
     a = Addr.parse(h.network(), addr)
     if a.host == "":
@@ -582,30 +582,30 @@ def _parseAddr(h, addr):
     return a
 
 # addr returns address where listener is accepting incoming connections.
-@method(listener)
+@func(listener)
 def addr(l):
     return l._socket.addr()
 
 
 # network returns full network name this subnetwork is part of.
-@method(VirtSubNetwork)
+@func(VirtSubNetwork)
 def network(n):
     return n._network
 
 # network returns full network name of underlying network.
-@method(Host)
+@func(Host)
 def network(h):
     return h._subnet.network()
 
 # name returns host name.
-@method(Host)
+@func(Host)
 def name(h):
     return h._name
 
 # ----------------------------------------
 
 # _excDown raises appropriate exception cause when h.down is found ready.
-@method(Host)
+@func(Host)
 def _excDown(h):
     if ready(h._subnet._down):
         raise ErrNetDown
@@ -613,7 +613,7 @@ def _excDown(h):
         raise ErrHostDown
 
 # _excDown raises appropriate exception cause when l.down is found ready.
-@method(listener)
+@func(listener)
 def _excDown(l):
     h = l._socket._host
     n = h._subnet
@@ -888,7 +888,7 @@ class _SubNetwork(VirtSubNetwork):
         registry.announce(hostname, '%s:%d' % n._oslistener.getsockname())
 
 
-@method(protocolError)
+@func(protocolError)
 def __str__(e):
     return "protocol error: %s" % e.args
 
