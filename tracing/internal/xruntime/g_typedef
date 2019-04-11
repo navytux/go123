@@ -87,7 +87,7 @@ gen_zruntime() {
 
 
 # main driver
-gov="go18 go19 go1.10 go1.11"
+gov="go18 go19 go1.10 go1.11 go1.12"
 
 for g in $gov; do
 	goset $g
