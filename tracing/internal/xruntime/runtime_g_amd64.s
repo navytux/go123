@@ -1,6 +1,6 @@
-#include "textflag.h"
-
 // +build amd64 amd64p
+
+#include "textflag.h"
 
 // func getg() *g
 TEXT ·getg(SB),NOSPLIT,$0-8
