@@ -37,7 +37,7 @@ function that is used to signal when the event happens. For example:
 		traceHello(who)
 	}
 
-By default trace function does nothing and has very small overhead(*).
+By default using trace function does nothing and has very small overhead(*).
 
 
 Probes
@@ -191,9 +191,7 @@ Please see `gotrace help` and lab.nexedi.com/kirr/go123/tracing/cmd/gotrace for 
 
 --------
 
-(*) conditionally checking whether a pointer != nil. After
-https://golang.org/issues/19348 is implemented the call/return overhead will be
-also gone.
+(*) inlined check whether a global pointer != nil.
 */
 package tracing
 
