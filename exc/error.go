@@ -1,4 +1,4 @@
-// Copyright (C) 2015-2018  Nexedi SA and Contributors.
+// Copyright (C) 2015-2019  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -19,7 +19,7 @@
 
 // Package exc provides exception-style error handling for Go.
 //
-// Raise and Catch allows to raise and catch exceptions.
+// Raise and Catch allow to raise and catch exceptions.
 //
 // By default the error caught is the same error that was raised. However with
 // Context functions can arrange for context related to what they are doing to
