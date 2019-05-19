@@ -1,4 +1,4 @@
-// Copyright (C) 2017-2018  Nexedi SA and Contributors.
+// Copyright (C) 2017-2019  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -54,6 +54,15 @@ import (
 	"sync/atomic"
 	"time"
 )
+
+// XXX if we could change std context, then Merge could work by simply creating
+// cancelCtx and registering it to parent1 and parent2.
+//
+// For the reference: here is how it is done in pygolang:
+//
+//	https://lab.nexedi.com/kirr/pygolang/blob/d3bfb1bf/golang/context.py#L115-130
+//	https://lab.nexedi.com/kirr/pygolang/blob/d3bfb1bf/golang/context.py#L228-264
+
 
 // mergeCtx represents 2 context merged into 1.
 type mergeCtx struct {
