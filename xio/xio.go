@@ -26,6 +26,8 @@
 //	  It is the opposite operation for BindCtx, but for arbitrary io.X
 //	  returned xio.X handles context only on best-effort basis. In
 //	  particular IO cancellation is not reliably handled for os.File .
+//	- Pipe amends io.Pipe and creates synchronous in-memory pipe that
+//	  supports IO cancellation.
 //
 // Miscellaneous utilities:
 //
