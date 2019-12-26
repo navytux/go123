@@ -26,6 +26,10 @@
 //	  It is the opposite operation for BindCtx, but for arbitrary io.X
 //	  returned xio.X handles context only on best-effort basis. In
 //	  particular IO cancellation is not reliably handled for os.File .
+//
+// Miscellaneous utilities:
+//
+//	- CountReader provides InputOffset for a Reader.
 package xio
 
 import (
@@ -272,14 +276,14 @@ func (s *stubCtxRWC) Close() error					{ return s.rw.Close() }
 // ----------------------------------------
 
 
-// CountedReader is an io.Reader that count total bytes read.
+// CountedReader is a Reader that count total bytes read.
 type CountedReader struct {
-	r     io.Reader
+	r     Reader
 	nread int64
 }
 
-func (cr *CountedReader) Read(p []byte) (int, error) {
-	n, err := cr.r.Read(p)
+func (cr *CountedReader) Read(ctx context.Context, p []byte) (int, error) {
+	n, err := cr.r.Read(ctx, p)
 	cr.nread += int64(n)
 	return n, err
 }
@@ -290,6 +294,6 @@ func (cr *CountedReader) InputOffset() int64 {
 }
 
 // CountReader wraps r with CountedReader.
-func CountReader(r io.Reader) *CountedReader {
+func CountReader(r Reader) *CountedReader {
 	return &CountedReader{r, 0}
 }

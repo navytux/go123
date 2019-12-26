@@ -1,5 +1,5 @@
-// Copyright (C) 2017  Nexedi SA and Contributors.
-//                     Kirill Smelkov <kirr@nexedi.com>
+// Copyright (C) 2017-2019  Nexedi SA and Contributors.
+//                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
 // it under the terms of the GNU General Public License version 3, or (at your
@@ -22,6 +22,7 @@ package xbufio
 
 import (
 	"bufio"
+	"context"
 	"io"
 
 	"lab.nexedi.com/kirr/go123/xio"
@@ -40,12 +41,13 @@ func NewReader(r io.Reader) *Reader {
 	}
 
 	// idempotent(xio.CountedReader)
-	cr, ok := r.(*xio.CountedReader)
+	xr := xio.WithCtxR(r)
+	cr, ok := xr.(*xio.CountedReader)
 	if !ok {
-		cr = xio.CountReader(r)
+		cr = xio.CountReader(xr)
 	}
 
-	return &Reader{bufio.NewReader(cr), cr}
+	return &Reader{bufio.NewReader(xio.BindCtxR(cr, context.Background())), cr}
 }
 
 // InputOffset returns current logical position in input stream.
