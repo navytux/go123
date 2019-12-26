@@ -1,14 +1,14 @@
 // Copyright 2009 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// license that can be found in the LICENSE-go file.
 
 // Pipe adapter to connect code expecting an io.Reader
 // with code expecting an io.Writer.
 
-package io
+package xio
 
 import (
-	"errors"
+	"io"
 	"sync"
 )
 
@@ -31,9 +31,6 @@ func (a *onceError) Load() error {
 	defer a.Unlock()
 	return a.err
 }
-
-// ErrClosedPipe is the error used for read or write operations on a closed pipe.
-var ErrClosedPipe = errors.New("io: read/write on closed pipe")
 
 // A pipe is the shared pipe structure underlying PipeReader and PipeWriter.
 type pipe struct {
@@ -69,12 +66,12 @@ func (p *pipe) readCloseError() error {
 	if werr := p.werr.Load(); rerr == nil && werr != nil {
 		return werr
 	}
-	return ErrClosedPipe
+	return io.ErrClosedPipe
 }
 
 func (p *pipe) CloseRead(err error) error {
 	if err == nil {
-		err = ErrClosedPipe
+		err = io.ErrClosedPipe
 	}
 	p.rerr.Store(err)
 	p.once.Do(func() { close(p.done) })
@@ -108,12 +105,12 @@ func (p *pipe) writeCloseError() error {
 	if rerr := p.rerr.Load(); werr == nil && rerr != nil {
 		return rerr
 	}
-	return ErrClosedPipe
+	return io.ErrClosedPipe
 }
 
 func (p *pipe) CloseWrite(err error) error {
 	if err == nil {
-		err = EOF
+		err = io.EOF
 	}
 	p.werr.Store(err)
 	p.once.Do(func() { close(p.done) })
@@ -135,7 +132,7 @@ func (r *PipeReader) Read(data []byte) (n int, err error) {
 }
 
 // Close closes the reader; subsequent writes to the
-// write half of the pipe will return the error ErrClosedPipe.
+// write half of the pipe will return the error io.ErrClosedPipe.
 func (r *PipeReader) Close() error {
 	return r.CloseWithError(nil)
 }
@@ -158,7 +155,7 @@ type PipeWriter struct {
 // it writes data to the pipe, blocking until one or more readers
 // have consumed all the data or the read end is closed.
 // If the read end is closed with an error, that err is
-// returned as err; otherwise err is ErrClosedPipe.
+// returned as err; otherwise err is io.ErrClosedPipe.
 func (w *PipeWriter) Write(data []byte) (n int, err error) {
 	return w.p.Write(data)
 }

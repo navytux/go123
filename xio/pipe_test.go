@@ -1,20 +1,21 @@
 // Copyright 2009 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// license that can be found in the LICENSE-go file.
 
-package io_test
+package xio_test
 
 import (
 	"bytes"
 	"fmt"
-	. "io"
+	"io"
+	. "lab.nexedi.com/kirr/go123/xio"
 	"sort"
 	"strings"
 	"testing"
 	"time"
 )
 
-func checkWrite(t *testing.T, w Writer, data []byte, c chan int) {
+func checkWrite(t *testing.T, w io.Writer, data []byte, c chan int) {
 	n, err := w.Write(data)
 	if err != nil {
 		t.Errorf("write: %v", err)
@@ -42,11 +43,11 @@ func TestPipe1(t *testing.T) {
 	w.Close()
 }
 
-func reader(t *testing.T, r Reader, c chan int) {
+func reader(t *testing.T, r io.Reader, c chan int) {
 	var buf = make([]byte, 64)
 	for {
 		n, err := r.Read(buf)
-		if err == EOF {
+		if err == io.EOF {
 			c <- 0
 			break
 		}
@@ -90,7 +91,7 @@ type pipeReturn struct {
 }
 
 // Test a large write that requires multiple reads to satisfy.
-func writer(w WriteCloser, buf []byte, c chan pipeReturn) {
+func writer(w io.WriteCloser, buf []byte, c chan pipeReturn) {
 	n, err := w.Write(buf)
 	w.Close()
 	c <- pipeReturn{n, err}
@@ -108,7 +109,7 @@ func TestPipe3(t *testing.T) {
 	tot := 0
 	for n := 1; n <= 256; n *= 2 {
 		nn, err := r.Read(rdat[tot : tot+n])
-		if err != nil && err != EOF {
+		if err != nil && err != io.EOF {
 			t.Fatalf("read: %v", err)
 		}
 
@@ -118,7 +119,7 @@ func TestPipe3(t *testing.T) {
 			expect = 1
 		} else if n == 256 {
 			expect = 0
-			if err != EOF {
+			if err != io.EOF {
 				t.Fatalf("read at end: %v", err)
 			}
 		}
@@ -161,10 +162,10 @@ func (p pipeTest) String() string {
 var pipeTests = []pipeTest{
 	{true, nil, false},
 	{true, nil, true},
-	{true, ErrShortWrite, true},
+	{true, io.ErrShortWrite, true},
 	{false, nil, false},
 	{false, nil, true},
-	{false, ErrShortWrite, true},
+	{false, io.ErrShortWrite, true},
 }
 
 func delayClose(t *testing.T, cl closer, ch chan int, tt pipeTest) {
@@ -195,7 +196,7 @@ func TestPipeReadClose(t *testing.T) {
 		<-c
 		want := tt.err
 		if want == nil {
-			want = EOF
+			want = io.EOF
 		}
 		if err != want {
 			t.Errorf("read from closed pipe: %v want %v", err, want)
@@ -216,8 +217,8 @@ func TestPipeReadClose2(t *testing.T) {
 	go delayClose(t, r, c, pipeTest{})
 	n, err := r.Read(make([]byte, 64))
 	<-c
-	if n != 0 || err != ErrClosedPipe {
-		t.Errorf("read from closed pipe: %v, %v want %v, %v", n, err, 0, ErrClosedPipe)
+	if n != 0 || err != io.ErrClosedPipe {
+		t.Errorf("read from closed pipe: %v, %v want %v, %v", n, err, 0, io.ErrClosedPipe)
 	}
 }
 
@@ -232,11 +233,11 @@ func TestPipeWriteClose(t *testing.T) {
 		} else {
 			delayClose(t, r, c, tt)
 		}
-		n, err := WriteString(w, "hello, world")
+		n, err := io.WriteString(w, "hello, world")
 		<-c
 		expect := tt.err
 		if expect == nil {
-			expect = ErrClosedPipe
+			expect = io.ErrClosedPipe
 		}
 		if err != expect {
 			t.Errorf("write on closed pipe: %v want %v", err, expect)
@@ -257,8 +258,8 @@ func TestPipeWriteClose2(t *testing.T) {
 	go delayClose(t, w, c, pipeTest{})
 	n, err := w.Write(make([]byte, 64))
 	<-c
-	if n != 0 || err != ErrClosedPipe {
-		t.Errorf("write to closed pipe: %v, %v want %v, %v", n, err, 0, ErrClosedPipe)
+	if n != 0 || err != io.ErrClosedPipe {
+		t.Errorf("write to closed pipe: %v, %v want %v, %v", n, err, 0, io.ErrClosedPipe)
 	}
 }
 
@@ -269,7 +270,7 @@ func TestWriteEmpty(t *testing.T) {
 		w.Close()
 	}()
 	var b [2]byte
-	ReadFull(r, b[0:2])
+	io.ReadFull(r, b[0:2])
 	r.Close()
 }
 
@@ -280,7 +281,7 @@ func TestWriteNil(t *testing.T) {
 		w.Close()
 	}()
 	var b [2]byte
-	ReadFull(r, b[0:2])
+	io.ReadFull(r, b[0:2])
 	r.Close()
 }
 
@@ -301,9 +302,9 @@ func TestWriteAfterWriterClose(t *testing.T) {
 
 	buf := make([]byte, 100)
 	var result string
-	n, err := ReadFull(r, buf)
-	if err != nil && err != ErrUnexpectedEOF {
-		t.Fatalf("got: %q; want: %q", err, ErrUnexpectedEOF)
+	n, err := io.ReadFull(r, buf)
+	if err != nil && err != io.ErrUnexpectedEOF {
+		t.Fatalf("got: %q; want: %q", err, io.ErrUnexpectedEOF)
 	}
 	result = string(buf[0:n])
 	<-done
@@ -311,8 +312,8 @@ func TestWriteAfterWriterClose(t *testing.T) {
 	if result != "hello" {
 		t.Errorf("got: %q; want: %q", result, "hello")
 	}
-	if writeErr != ErrClosedPipe {
-		t.Errorf("got: %q; want: %q", writeErr, ErrClosedPipe)
+	if writeErr != io.ErrClosedPipe {
+		t.Errorf("got: %q; want: %q", writeErr, io.ErrClosedPipe)
 	}
 }
 
