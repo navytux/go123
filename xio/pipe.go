@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE-go file.
 
-// Pipe adapter to connect code expecting an io.Reader
-// with code expecting an io.Writer.
+// Pipe adapter to connect code expecting an xio.Reader
+// with code expecting an xio.Writer.
 
 package xio
 
 import (
+	"context"
 	"io"
 	"sync"
 )
@@ -44,10 +45,12 @@ type pipe struct {
 	werr onceError
 }
 
-func (p *pipe) Read(b []byte) (n int, err error) {
+func (p *pipe) Read(ctx context.Context, b []byte) (n int, err error) {
 	select {
 	case <-p.done:
 		return 0, p.readCloseError()
+	case <-ctx.Done():
+		return 0, ctx.Err()
 	default:
 	}
 
@@ -58,6 +61,8 @@ func (p *pipe) Read(b []byte) (n int, err error) {
 		return nr, nil
 	case <-p.done:
 		return 0, p.readCloseError()
+	case <-ctx.Done():
+		return 0, ctx.Err()
 	}
 }
 
@@ -78,10 +83,12 @@ func (p *pipe) CloseRead(err error) error {
 	return nil
 }
 
-func (p *pipe) Write(b []byte) (n int, err error) {
+func (p *pipe) Write(ctx context.Context, b []byte) (n int, err error) {
 	select {
 	case <-p.done:
 		return 0, p.writeCloseError()
+	case <-ctx.Done():
+		return 0, ctx.Err()
 	default:
 		p.wrMu.Lock()
 		defer p.wrMu.Unlock()
@@ -95,6 +102,8 @@ func (p *pipe) Write(b []byte) (n int, err error) {
 			n += nw
 		case <-p.done:
 			return n, p.writeCloseError()
+		case <-ctx.Done():
+			return n, ctx.Err()
 		}
 	}
 	return n, nil
@@ -118,17 +127,19 @@ func (p *pipe) CloseWrite(err error) error {
 }
 
 // A PipeReader is the read half of a pipe.
+//
+// It is similar to io.PipeReader, but additionally provides cancellation support for Read.
 type PipeReader struct {
 	p *pipe
 }
 
-// Read implements the standard Read interface:
+// Read implements xio.Reader interface:
 // it reads data from the pipe, blocking until a writer
 // arrives or the write end is closed.
 // If the write end is closed with an error, that error is
 // returned as err; otherwise err is EOF.
-func (r *PipeReader) Read(data []byte) (n int, err error) {
-	return r.p.Read(data)
+func (r *PipeReader) Read(ctx context.Context, data []byte) (n int, err error) {
+	return r.p.Read(ctx, data)
 }
 
 // Close closes the reader; subsequent writes to the
@@ -147,17 +158,19 @@ func (r *PipeReader) CloseWithError(err error) error {
 }
 
 // A PipeWriter is the write half of a pipe.
+//
+// It is similar to io.PipeWriter, but additionally provides cancellation support for Write.
 type PipeWriter struct {
 	p *pipe
 }
 
-// Write implements the standard Write interface:
+// Write implements xio.Writer interface:
 // it writes data to the pipe, blocking until one or more readers
 // have consumed all the data or the read end is closed.
 // If the read end is closed with an error, that err is
 // returned as err; otherwise err is io.ErrClosedPipe.
-func (w *PipeWriter) Write(data []byte) (n int, err error) {
-	return w.p.Write(data)
+func (w *PipeWriter) Write(ctx context.Context, data []byte) (n int, err error) {
+	return w.p.Write(ctx, data)
 }
 
 // Close closes the writer; subsequent reads from the
@@ -177,8 +190,8 @@ func (w *PipeWriter) CloseWithError(err error) error {
 }
 
 // Pipe creates a synchronous in-memory pipe.
-// It can be used to connect code expecting an io.Reader
-// with code expecting an io.Writer.
+// It can be used to connect code expecting a xio.Reader
+// with code expecting a xio.Writer.
 //
 // Reads and Writes on the pipe are matched one to one
 // except when multiple Reads are needed to consume a single Write.
@@ -191,6 +204,9 @@ func (w *PipeWriter) CloseWithError(err error) error {
 // It is safe to call Read and Write in parallel with each other or with Close.
 // Parallel calls to Read and parallel calls to Write are also safe:
 // the individual calls will be gated sequentially.
+//
+// Pipe is similar to io.Pipe but additionally provides cancellation support
+// for Read and Write.
 func Pipe() (*PipeReader, *PipeWriter) {
 	p := &pipe{
 		wrCh: make(chan []byte),

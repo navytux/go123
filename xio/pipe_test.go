@@ -6,6 +6,7 @@ package xio_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	. "lab.nexedi.com/kirr/go123/xio"
@@ -15,8 +16,10 @@ import (
 	"time"
 )
 
-func checkWrite(t *testing.T, w io.Writer, data []byte, c chan int) {
-	n, err := w.Write(data)
+var bg = context.Background()
+
+func checkWrite(t *testing.T, w Writer, data []byte, c chan int) {
+	n, err := w.Write(bg, data)
 	if err != nil {
 		t.Errorf("write: %v", err)
 	}
@@ -32,7 +35,7 @@ func TestPipe1(t *testing.T) {
 	r, w := Pipe()
 	var buf = make([]byte, 64)
 	go checkWrite(t, w, []byte("hello, world"), c)
-	n, err := r.Read(buf)
+	n, err := r.Read(bg, buf)
 	if err != nil {
 		t.Errorf("read: %v", err)
 	} else if n != 12 || string(buf[0:12]) != "hello, world" {
@@ -43,10 +46,10 @@ func TestPipe1(t *testing.T) {
 	w.Close()
 }
 
-func reader(t *testing.T, r io.Reader, c chan int) {
+func reader(t *testing.T, r Reader, c chan int) {
 	var buf = make([]byte, 64)
 	for {
-		n, err := r.Read(buf)
+		n, err := r.Read(bg, buf)
 		if err == io.EOF {
 			c <- 0
 			break
@@ -66,7 +69,7 @@ func TestPipe2(t *testing.T) {
 	var buf = make([]byte, 64)
 	for i := 0; i < 5; i++ {
 		p := buf[0 : 5+i*10]
-		n, err := w.Write(p)
+		n, err := w.Write(bg, p)
 		if n != len(p) {
 			t.Errorf("wrote %d, got %d", len(p), n)
 		}
@@ -104,11 +107,11 @@ func TestPipe3(t *testing.T) {
 	for i := 0; i < len(wdat); i++ {
 		wdat[i] = byte(i)
 	}
-	go writer(w, wdat, c)
+	go writer(BindCtxWC(w, bg), wdat, c)
 	var rdat = make([]byte, 1024)
 	tot := 0
 	for n := 1; n <= 256; n *= 2 {
-		nn, err := r.Read(rdat[tot : tot+n])
+		nn, err := r.Read(bg, rdat[tot : tot+n])
 		if err != nil && err != io.EOF {
 			t.Fatalf("read: %v", err)
 		}
@@ -192,7 +195,7 @@ func TestPipeReadClose(t *testing.T) {
 			delayClose(t, w, c, tt)
 		}
 		var buf = make([]byte, 64)
-		n, err := r.Read(buf)
+		n, err := r.Read(bg, buf)
 		<-c
 		want := tt.err
 		if want == nil {
@@ -215,7 +218,7 @@ func TestPipeReadClose2(t *testing.T) {
 	c := make(chan int, 1)
 	r, _ := Pipe()
 	go delayClose(t, r, c, pipeTest{})
-	n, err := r.Read(make([]byte, 64))
+	n, err := r.Read(bg, make([]byte, 64))
 	<-c
 	if n != 0 || err != io.ErrClosedPipe {
 		t.Errorf("read from closed pipe: %v, %v want %v, %v", n, err, 0, io.ErrClosedPipe)
@@ -233,7 +236,7 @@ func TestPipeWriteClose(t *testing.T) {
 		} else {
 			delayClose(t, r, c, tt)
 		}
-		n, err := io.WriteString(w, "hello, world")
+		n, err := io.WriteString(BindCtxW(w, bg), "hello, world")
 		<-c
 		expect := tt.err
 		if expect == nil {
@@ -256,7 +259,7 @@ func TestPipeWriteClose2(t *testing.T) {
 	c := make(chan int, 1)
 	_, w := Pipe()
 	go delayClose(t, w, c, pipeTest{})
-	n, err := w.Write(make([]byte, 64))
+	n, err := w.Write(bg, make([]byte, 64))
 	<-c
 	if n != 0 || err != io.ErrClosedPipe {
 		t.Errorf("write to closed pipe: %v, %v want %v, %v", n, err, 0, io.ErrClosedPipe)
@@ -266,22 +269,22 @@ func TestPipeWriteClose2(t *testing.T) {
 func TestWriteEmpty(t *testing.T) {
 	r, w := Pipe()
 	go func() {
-		w.Write([]byte{})
+		w.Write(bg, []byte{})
 		w.Close()
 	}()
 	var b [2]byte
-	io.ReadFull(r, b[0:2])
+	io.ReadFull(BindCtxR(r, bg), b[0:2])
 	r.Close()
 }
 
 func TestWriteNil(t *testing.T) {
 	r, w := Pipe()
 	go func() {
-		w.Write(nil)
+		w.Write(bg, nil)
 		w.Close()
 	}()
 	var b [2]byte
-	io.ReadFull(r, b[0:2])
+	io.ReadFull(BindCtxR(r, bg), b[0:2])
 	r.Close()
 }
 
@@ -291,18 +294,18 @@ func TestWriteAfterWriterClose(t *testing.T) {
 	done := make(chan bool)
 	var writeErr error
 	go func() {
-		_, err := w.Write([]byte("hello"))
+		_, err := w.Write(bg, []byte("hello"))
 		if err != nil {
 			t.Errorf("got error: %q; expected none", err)
 		}
 		w.Close()
-		_, writeErr = w.Write([]byte("world"))
+		_, writeErr = w.Write(bg, []byte("world"))
 		done <- true
 	}()
 
 	buf := make([]byte, 100)
 	var result string
-	n, err := io.ReadFull(r, buf)
+	n, err := io.ReadFull(BindCtxR(r, bg), buf)
 	if err != nil && err != io.ErrUnexpectedEOF {
 		t.Fatalf("got: %q; want: %q", err, io.ErrUnexpectedEOF)
 	}
@@ -323,21 +326,21 @@ func TestPipeCloseError(t *testing.T) {
 
 	r, w := Pipe()
 	r.CloseWithError(testError1{})
-	if _, err := w.Write(nil); err != (testError1{}) {
+	if _, err := w.Write(bg, nil); err != (testError1{}) {
 		t.Errorf("Write error: got %T, want testError1", err)
 	}
 	r.CloseWithError(testError2{})
-	if _, err := w.Write(nil); err != (testError1{}) {
+	if _, err := w.Write(bg, nil); err != (testError1{}) {
 		t.Errorf("Write error: got %T, want testError1", err)
 	}
 
 	r, w = Pipe()
 	w.CloseWithError(testError1{})
-	if _, err := r.Read(nil); err != (testError1{}) {
+	if _, err := r.Read(bg, nil); err != (testError1{}) {
 		t.Errorf("Read error: got %T, want testError1", err)
 	}
 	w.CloseWithError(testError2{})
-	if _, err := r.Read(nil); err != (testError1{}) {
+	if _, err := r.Read(bg, nil); err != (testError1{}) {
 		t.Errorf("Read error: got %T, want testError1", err)
 	}
 }
@@ -355,7 +358,7 @@ func TestPipeConcurrent(t *testing.T) {
 		for i := 0; i < count; i++ {
 			go func() {
 				time.Sleep(time.Millisecond) // Increase probability of race
-				if n, err := w.Write([]byte(input)); n != len(input) || err != nil {
+				if n, err := w.Write(bg, []byte(input)); n != len(input) || err != nil {
 					t.Errorf("Write() = (%d, %v); want (%d, nil)", n, err, len(input))
 				}
 			}()
@@ -363,7 +366,7 @@ func TestPipeConcurrent(t *testing.T) {
 
 		buf := make([]byte, count*len(input))
 		for i := 0; i < len(buf); i += readSize {
-			if n, err := r.Read(buf[i : i+readSize]); n != readSize || err != nil {
+			if n, err := r.Read(bg, buf[i : i+readSize]); n != readSize || err != nil {
 				t.Errorf("Read() = (%d, %v); want (%d, nil)", n, err, readSize)
 			}
 		}
@@ -385,7 +388,7 @@ func TestPipeConcurrent(t *testing.T) {
 			go func() {
 				time.Sleep(time.Millisecond) // Increase probability of race
 				buf := make([]byte, readSize)
-				if n, err := r.Read(buf); n != readSize || err != nil {
+				if n, err := r.Read(bg, buf); n != readSize || err != nil {
 					t.Errorf("Read() = (%d, %v); want (%d, nil)", n, err, readSize)
 				}
 				c <- buf
@@ -393,7 +396,7 @@ func TestPipeConcurrent(t *testing.T) {
 		}
 
 		for i := 0; i < count; i++ {
-			if n, err := w.Write([]byte(input)); n != len(input) || err != nil {
+			if n, err := w.Write(bg, []byte(input)); n != len(input) || err != nil {
 				t.Errorf("Write() = (%d, %v); want (%d, nil)", n, err, len(input))
 			}
 		}
@@ -421,4 +424,32 @@ func sortBytesInGroups(b []byte, n int) []byte {
 	}
 	sort.Slice(groups, func(i, j int) bool { return bytes.Compare(groups[i], groups[j]) < 0 })
 	return bytes.Join(groups, nil)
+}
+
+
+// Verify that .Read and .Write handle cancellation.
+func TestPipeCancel(t *testing.T) {
+	buf := make([]byte, 64)
+	r, _ := Pipe()
+	ctx, cancel := context.WithCancel(bg)
+
+	go func() {
+		time.Sleep(1*time.Millisecond)
+		cancel()
+	}()
+
+	n, err := r.Read(ctx, buf)
+	if eok := context.Canceled; !(n == 0 && err == eok) {
+		t.Errorf("read: got (%v, %v)  ; want (%v, %v)", n, err, 0, eok)
+	}
+
+
+	_, w := Pipe()
+	ctx, cancel = context.WithTimeout(bg, 1*time.Millisecond)
+
+	n, err = w.Write(ctx, buf)
+	if eok := context.DeadlineExceeded; !(n == 0 && err == eok) {
+		t.Errorf("write: got (%v, %v)  ; want (%v, %v)", n, err, 0, eok)
+	}
+
 }
