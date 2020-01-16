@@ -1,5 +1,5 @@
-// Copyright (C) 2018  Nexedi SA and Contributors.
-//                     Kirill Smelkov <kirr@nexedi.com>
+// Copyright (C) 2018-2020  Nexedi SA and Contributors.
+//                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
 // it under the terms of the GNU General Public License version 3, or (at your
@@ -196,6 +196,5 @@ func (e *RegistryError) Error() string {
 	return s
 }
 
-func (e *RegistryError) Cause() error {
-	return e.Err
-}
+func (e *RegistryError) Cause() error  { return e.Err }
+func (e *RegistryError) Unwrap() error { return e.Err }
