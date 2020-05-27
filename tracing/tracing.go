@@ -1,4 +1,4 @@
-// Copyright (C) 2017-2019  Nexedi SA and Contributors.
+// Copyright (C) 2017-2020  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -166,6 +166,7 @@ available as regular functions prefixed with imported package name:
 	tracing.Lock()
 	hello_traceHello_Attach(nil, func(who string) {
 		fmt.Printf("SayHello in package hello: %s", who)
+	})
 	tracing.Unlock()
 
 	...
@@ -173,7 +174,7 @@ available as regular functions prefixed with imported package name:
 
 Gotrace
 
-The way //trace:event and //trace:import works is via additional code being
+The way //trace:event and //trace:import work is via additional code being
 generated for them. Whenever a package uses any //trace: directive,
 it has to organize to run `gotrace gen` on its sources for them to work,
 usually with the help of //go:generate. For example:
