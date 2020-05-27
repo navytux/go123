@@ -1,4 +1,4 @@
-// Copyright (C) 2015-2018  Nexedi SA and Contributors.
+// Copyright (C) 2015-2020  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -26,7 +26,7 @@
 // for example:
 //
 //	func myfunc(arg1, arg2 string) (..., err error) {
-//		defer xerr.Contextf(&error, "doing something (%s, %s)", arg1, arg2)
+//		defer xerr.Contextf(&err, "doing something (%s, %s)", arg1, arg2)
 //		...
 //
 // which will, if returned error is !nil, wrap it with the following prefix:
