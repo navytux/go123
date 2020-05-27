@@ -1,4 +1,4 @@
-// Copyright (C) 2017-2019  Nexedi SA and Contributors.
+// Copyright (C) 2017-2020  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -57,6 +57,9 @@ import (
 
 // XXX if we could change std context, then Merge could work by simply creating
 // cancelCtx and registering it to parent1 and parent2.
+//
+//	https://github.com/golang/go/issues/36503
+//	https://github.com/golang/go/issues/36448
 //
 // For the reference: here is how it is done in pygolang:
 //
