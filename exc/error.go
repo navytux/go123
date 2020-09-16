@@ -1,4 +1,4 @@
-// Copyright (C) 2015-2019  Nexedi SA and Contributors.
+// Copyright (C) 2015-2020  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -22,7 +22,7 @@
 // Raise and Catch allow to raise and catch exceptions.
 //
 // By default the error caught is the same error that was raised. However with
-// Context functions can arrange for context related to what they are doing to
+// Context* functions can arrange for context related to what they are doing to
 // be added to raised error as prefix, for example
 //
 //	func doSomething(path string) {
@@ -30,6 +30,11 @@
 //			return fmt.Sprintf("doing something %s", path)
 //		})()
 //
+// or
+//
+//	func doSomething(path string) {
+//		defer exc.Contextf("doing something %s", path)
+//		...
 //
 // Lacking such Context annotations Addcallingcontext allows to add function
 // names up to the exception point as the calling context. However this way
@@ -173,6 +178,20 @@ func Context(f func() interface{}) {
 
 	arg := f()
 	panic(Addcontext(e, arg))
+}
+
+// Contextf provides formatted string to be added to error as context on unwinding.
+//
+// It is shorthand for Context wrapping fmt.Sprintf.
+//
+// Must be called under defer.
+func Contextf(format string, argv ...interface{}) {
+	e := _errcatch(recover())
+	if e == nil {
+		return
+	}
+
+	panic(Addcontext(e, fmt.Sprintf(format, argv...)))
 }
 
 // Addcontext adds "prefix" context to error.

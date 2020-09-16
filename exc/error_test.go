@@ -1,4 +1,4 @@
-// Copyright (C) 2015-2017  Nexedi SA and Contributors.
+// Copyright (C) 2015-2020  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -101,6 +101,25 @@ func TestErrContext(t *testing.T) {
 	})
 	do_context1(t)
 	do_context2()
+	t.Fatal("error not caught")
+}
+
+func do_contextf1() {
+	defer Contextf("must not be added")
+	return // no exception
+}
+
+func do_contextf2() {
+	defer Contextf("hello %d world", 123)
+	do_raise1()
+}
+
+func TestErrContextf(t *testing.T) {
+	defer Catch(func(e *Error) {
+		verifyErrChain(t, e, "hello 123 world", 1)
+	})
+	do_contextf1()
+	do_contextf2()
 	t.Fatal("error not caught")
 }
 
