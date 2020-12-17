@@ -1,4 +1,4 @@
-// Copyright (C) 2017-2019  Nexedi SA and Contributors.
+// Copyright (C) 2017-2020  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -104,9 +104,9 @@ func (nt *netTrace) Dial(ctx context.Context, addr string) (net.Conn, error) {
 	return &traceConn{nt, c}, nil
 }
 
-func (nt *netTrace) Listen(laddr string) (net.Listener, error) {
+func (nt *netTrace) Listen(ctx context.Context, laddr string) (Listener, error) {
 	// XXX +TraceNetListenPre ?
-	l, err := nt.inner.Listen(laddr)
+	l, err := nt.inner.Listen(ctx, laddr)
 	if err != nil {
 		return nil, err
 	}
@@ -117,11 +117,11 @@ func (nt *netTrace) Listen(laddr string) (net.Listener, error) {
 // netTraceListener wraps net.Listener to wrap accepted connections with traceConn.
 type netTraceListener struct {
 	nt           *netTrace
-	net.Listener
+	Listener
 }
 
-func (ntl *netTraceListener) Accept() (net.Conn, error) {
-	c, err := ntl.Listener.Accept()
+func (ntl *netTraceListener) Accept(ctx context.Context) (net.Conn, error) {
+	c, err := ntl.Listener.Accept(ctx)
 	if err != nil {
 		return nil, err
 	}
