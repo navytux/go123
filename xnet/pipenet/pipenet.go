@@ -1,4 +1,4 @@
-// Copyright (C) 2017-2018  Nexedi SA and Contributors.
+// Copyright (C) 2017-2020  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -28,9 +28,9 @@
 //	h1 := net.Host("abc")
 //	h2 := net.Host("def")
 //
-//	l, err := h1.Listen(":10")          // starts listening on address "abc:10"
+//	l, err := h1.Listen(ctx, ":10")     // starts listening on address "abc:10"
 //	go func() {
-//		csrv, err := l.Accept()     // csrv will have LocalAddr "abc:1"
+//		csrv, err := l.Accept(ctx)  // csrv will have LocalAddr "abc:1"
 //	}()
 //	ccli, err := h2.Dial(ctx, "abc:10") // ccli will be connection between "def:1" - "abc:1"
 //

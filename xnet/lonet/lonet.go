@@ -1,5 +1,5 @@
-// Copyright (C) 2018  Nexedi SA and Contributors.
-//                     Kirill Smelkov <kirr@nexedi.com>
+// Copyright (C) 2018-2020  Nexedi SA and Contributors.
+//                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
 // it under the terms of the GNU General Public License version 3, or (at your
@@ -48,11 +48,11 @@
 //	hβ, err := net.NewHost(ctx, "β")
 //
 //	// starts listening on address "α:10"
-//	l, err := hα.Listen(":10")
+//	l, err := hα.Listen(ctx, ":10")
 //	go func() {
-//		csrv, err := l.Accept()   // csrv will have LocalAddr "α:1"
+//		csrv, err := l.Accept(ctx) // csrv will have LocalAddr "α:1"
 //	}()
-//	ccli, err := hβ.Dial(ctx, "α:10") // ccli will be connection between "β:1" - "α:1"
+//	ccli, err := hβ.Dial(ctx, "α:10")  // ccli will be connection between "β:1" - "α:1"
 //
 // Once again lonet is similar to pipenet, but since it works via OS TCP stack
 // it could be handy for testing networked application when there are several
@@ -141,7 +141,7 @@ type subNetwork struct {
 
 	// OS-level listener of this subnetwork.
 	// whenever connection to subnet's host is tried to be established it goes here.
-	oslistener net.Listener
+	oslistener xnet.Listener
 
 	// accepted connections are further routed here for virtnet to handle.
 	vnotify virtnet.Notifier
@@ -197,7 +197,7 @@ func Join(ctx context.Context, network string) (_ *virtnet.SubNetwork, err error
 	}
 
 	// start OS listener
-	oslistener, err := tcp4.Listen("127.0.0.1:")
+	oslistener, err := tcp4.Listen(ctx, "127.0.0.1:")
 	if err != nil {
 		registry.Close()
 		return nil, err
@@ -238,7 +238,7 @@ func (n *subNetwork) serve(ctx context.Context) {
 	// wait for incoming OS connections and do lonet protocol handshake on them.
 	// if successful - route handshaked connection to particular Host's listener.
 	for {
-		osconn, err := n.oslistener.Accept()
+		osconn, err := n.oslistener.Accept(ctx)
 		if err != nil {
 			// mark subnetwork as being down and stop
 			n.vnotify.VNetDown(err)

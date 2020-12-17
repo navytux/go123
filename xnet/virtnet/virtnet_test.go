@@ -1,5 +1,5 @@
-// Copyright (C) 2018  Nexedi SA and Contributors.
-//                     Kirill Smelkov <kirr@nexedi.com>
+// Copyright (C) 2018-2020  Nexedi SA and Contributors.
+//                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
 // it under the terms of the GNU General Public License version 3, or (at your
@@ -31,6 +31,7 @@ import (
 
 	"lab.nexedi.com/kirr/go123/exc"
 	"lab.nexedi.com/kirr/go123/internal/xtesting"
+	"lab.nexedi.com/kirr/go123/xnet"
 	"lab.nexedi.com/kirr/go123/xnet/pipenet"
 	. "lab.nexedi.com/kirr/go123/xnet/virtnet"
 
@@ -47,7 +48,7 @@ type testNet struct {
 
 	net      *SubNetwork
 	hα, hβ   *Host
-	lα, lβ   net.Listener
+	lα, lβ   xnet.Listener
 	cαβ, cβα net.Conn
 }
 
@@ -66,11 +67,11 @@ func newTestNet(t0 testing.TB) *testNet {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.lα, err = t.hα.Listen("")
+	t.lα, err = t.hα.Listen(context.Background(), "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.lβ, err = t.hβ.Listen("")
+	t.lβ, err = t.hβ.Listen(context.Background(), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +86,7 @@ func newTestNet(t0 testing.TB) *testNet {
 	}()
 
 	wg.Go(func() error {
-		c, err := t.lβ.Accept()
+		c, err := t.lβ.Accept(context.Background())
 		if err != nil {
 			return err
 		}
@@ -263,14 +264,14 @@ func TestClose(t *testing.T) {
 
 	// host.Listen vs subnet.Close
 	testClose(t, "subnet", func(t *testNet) {
-		l, err := t.hα.Listen("")
+		l, err := t.hα.Listen(bg, "")
 		assert.Eq(l, nil)
 		assert.Eq(err, xneterr("listen", "α:0", ErrNetDown))
 	}, serialOnly)
 
 	// host.Listen vs host.Close
 	testClose(t, "hα", func(t *testNet) {
-		l, err := t.hα.Listen("")
+		l, err := t.hα.Listen(bg, "")
 		assert.Eq(l, nil)
 		assert.Eq(err, xneterr("listen", "α:0", ErrHostDown))
 	}, serialOnly)
@@ -279,21 +280,21 @@ func TestClose(t *testing.T) {
 
 	// listener.Accept vs subnet.Close
 	testClose(t, "subnet", func(t *testNet) {
-		c, err := t.lα.Accept()
+		c, err := t.lα.Accept(bg)
 		assert.Eq(c, nil)
 		assert.Eq(err, xneterr("accept", "α:1", ErrNetDown))
 	})
 
 	// listener.Accept vs host.Close
 	testClose(t, "hα", func(t *testNet) {
-		c, err := t.lα.Accept()
+		c, err := t.lα.Accept(bg)
 		assert.Eq(c, nil)
 		assert.Eq(err, xneterr("accept", "α:1", ErrHostDown))
 	})
 
 	// listener.Accept vs listener.Close
 	testClose(t, "lα", func(t *testNet) {
-		c, err := t.lα.Accept()
+		c, err := t.lα.Accept(bg)
 		assert.Eq(c, nil)
 		assert.Eq(err, xneterr("accept", "α:1", ErrSockDown))
 	})

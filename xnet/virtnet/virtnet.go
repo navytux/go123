@@ -1,4 +1,4 @@
-// Copyright (C) 2017-2018  Nexedi SA and Contributors.
+// Copyright (C) 2017-2020  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -172,7 +172,7 @@ type conn struct {
 	closeOnce sync.Once
 }
 
-// listener implements net.Listener for Host.Listen .
+// listener implements xnet.Listener for Host.Listen .
 type listener struct {
 	// subnetwork/host/port we are listening on
 	socket *socket
@@ -361,7 +361,7 @@ func (h *Host) Close() (err error) {
 // It either allocates free port if laddr is "" or with 0 port, or binds to laddr.
 // Once listener is started, Dials could connect to listening address.
 // Connection requests created by Dials could be accepted via Accept.
-func (h *Host) Listen(laddr string) (_ net.Listener, err error) {
+func (h *Host) Listen(ctx context.Context, laddr string) (_ xnet.Listener, err error) {
 	var netladdr net.Addr
 	defer func() {
 		if err != nil {
@@ -371,6 +371,10 @@ func (h *Host) Listen(laddr string) (_ net.Listener, err error) {
 
 	if laddr == "" {
 		laddr = ":0"
+	}
+
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 
 	a, err := h.parseAddr(laddr)
@@ -454,7 +458,7 @@ func (l *listener) Close() error {
 }
 
 // Accept tries to connect to Dial called with addr corresponding to our listener.
-func (l *listener) Accept() (_ net.Conn, err error) {
+func (l *listener) Accept(ctx context.Context) (_ net.Conn, err error) {
 	h := l.socket.host
 
 	defer func() {
@@ -467,6 +471,8 @@ func (l *listener) Accept() (_ net.Conn, err error) {
 		var req dialReq
 
 		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
 		case <-l.down:
 			return nil, l.errDown()
 
@@ -484,9 +490,18 @@ func (l *listener) Accept() (_ net.Conn, err error) {
 		req.resp <- &Accept{sk.addr(), ack}
 
 		// wait for ack from acceptor.
+		var noack error
 		select {
+		case <-ctx.Done():
+			noack = ctx.Err()
 		case <-l.down:
-			// acceptor was slow and we have to shutdown the listener.
+			noack = l.errDown()
+
+		case err = <-ack:
+			// ok
+		}
+		if noack != nil {
+			// acceptor was slow.
 			// we have to make sure we still receive on ack and
 			// close req.conn / unallocate the socket appropriately.
 			go func() {
@@ -500,10 +515,7 @@ func (l *listener) Accept() (_ net.Conn, err error) {
 				h.sockMu.Unlock()
 			}()
 
-			return nil, l.errDown()
-
-		case err = <-ack:
-			// ok
+			return nil, noack
 		}
 
 		// we got feedback from acceptor

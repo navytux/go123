@@ -1,5 +1,5 @@
-// Copyright (C) 2018  Nexedi SA and Contributors.
-//                     Kirill Smelkov <kirr@nexedi.com>
+// Copyright (C) 2018-2020  Nexedi SA and Contributors.
+//                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
 // it under the terms of the GNU General Public License version 3, or (at your
@@ -70,11 +70,11 @@ func TestLonetGoPy(t *testing.T) {
 	}
 
 	hα, err := subnet.NewHost(bg, "α"); X(err)
-	lα, err := hα.Listen(":1"); X(err)
+	lα, err := hα.Listen(bg, ":1"); X(err)
 
 	wg := &errgroup.Group{}
 	wg.Go(exc.Funcx(func() {
-		c1, err := lα.Accept(); X(err)
+		c1, err := lα.Accept(bg); X(err)
 		assert.Eq(c1.LocalAddr(), xaddr("α:2"))
 		assert.Eq(c1.RemoteAddr(), xaddr("β:2"))
 

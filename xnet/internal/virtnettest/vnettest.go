@@ -1,4 +1,4 @@
-// Copyright (C) 2017-2018  Nexedi SA and Contributors.
+// Copyright (C) 2017-2020  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -30,22 +30,23 @@ import (
 
 	"lab.nexedi.com/kirr/go123/exc"
 	"lab.nexedi.com/kirr/go123/internal/xtesting"
+	"lab.nexedi.com/kirr/go123/xnet"
 	"lab.nexedi.com/kirr/go123/xnet/virtnet"
 )
 
 
 type mklistener interface {
-	Listen(string) (net.Listener, error)
+	Listen(context.Context, string) (xnet.Listener, error)
 }
 
-func xlisten(n mklistener, laddr string) net.Listener {
-	l, err := n.Listen(laddr)
+func xlisten(ctx context.Context, n mklistener, laddr string) xnet.Listener {
+	l, err := n.Listen(ctx, laddr)
 	exc.Raiseif(err)
 	return l
 }
 
-func xaccept(l net.Listener) net.Conn {
-	c, err := l.Accept()
+func xaccept(ctx context.Context, l xnet.Listener) net.Conn {
+	c, err := l.Accept(ctx)
 	exc.Raiseif(err)
 	return c
 }
@@ -108,7 +109,7 @@ func TestBasic(t *testing.T, subnet *virtnet.SubNetwork) {
 	_, err = hα.Dial(ctx, ":0")
 	assert.Eq(err, &net.OpError{Op: "dial", Net: subnet.Network(), Source: xaddr("α:1"), Addr: xaddr("α:0"), Err: virtnet.ErrConnRefused})
 
-	l1, err := hα.Listen("")
+	l1, err := hα.Listen(ctx, "")
 	X(err)
 	assert.Eq(l1.Addr(), xaddr("α:1"))
 
@@ -118,14 +119,14 @@ func TestBasic(t *testing.T, subnet *virtnet.SubNetwork) {
 
 	wg := &errgroup.Group{}
 	wg.Go(exc.Funcx(func() {
-		c1s := xaccept(l1)
+		c1s := xaccept(ctx, l1)
 		assert.Eq(c1s.LocalAddr(), xaddr("α:2"))
 		assert.Eq(c1s.RemoteAddr(), xaddr("β:1"))
 
 		assert.Eq(xread(c1s), "ping")		// XXX for !pipe could read less
 		xwrite(c1s, "pong")
 
-		c2s := xaccept(l1)
+		c2s := xaccept(ctx, l1)
 		assert.Eq(c2s.LocalAddr(), xaddr("α:3"))
 		assert.Eq(c2s.RemoteAddr(), xaddr("β:2"))
 
@@ -149,6 +150,6 @@ func TestBasic(t *testing.T, subnet *virtnet.SubNetwork) {
 
 	xwait(wg)
 
-	l2 := xlisten(hα, ":0") // autobind again
+	l2 := xlisten(ctx, hα, ":0") // autobind again
 	assert.Eq(l2.Addr(), xaddr("α:4"))
 }
