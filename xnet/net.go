@@ -102,7 +102,7 @@ func (n *netPlain) Listen(ctx context.Context, laddr string) (Listener, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newListenerCtx(rawl), nil
+	return WithCtxL(rawl), nil
 }
 
 // NetTLS wraps underlying networker with TLS layer according to config.
@@ -168,6 +168,35 @@ func (l *listenerTLS) Accept(ctx context.Context) (net.Conn, error) {
 
 
 // ----------------------------------------
+
+// BindCtx*(xnet.X, ctx) -> net.X
+
+// BindCtxL binds Listener l and ctx into net.Listener which passes ctx to l on every Accept.
+func BindCtxL(l Listener, ctx context.Context) net.Listener {
+	// NOTE even if l is listenerCtx we cannot return raw underlying listener
+	// because listenerCtx continues to call Accept in its serve goroutine.
+	// -> always wrap with bindCtx.
+	return &bindCtxL{l, ctx}
+}
+type bindCtxL struct {l Listener; ctx context.Context}
+func (b *bindCtxL) Accept() (net.Conn, error)  { return b.l.Accept(b.ctx) }
+func (b *bindCtxL) Close() error               { return b.l.Close() }
+func (b *bindCtxL) Addr() net.Addr             { return b.l.Addr() }
+
+// WithCtx*(net.X) -> xnet.X that handles ctx.
+
+// WithCtxL converts net.Listener l into Listener that accepts ctx in Accept.
+//
+// It returns original xnet object if l was created via BindCtx*.
+func WithCtxL(l net.Listener) Listener {
+	// WithCtx(BindCtx(X)) = X
+	switch b := l.(type) {
+	case *bindCtxL: return b.l
+	}
+
+	return newListenerCtx(l)
+}
+
 
 // listenerCtx provides Listener given net.Listener.
 type listenerCtx struct {
