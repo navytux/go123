@@ -22,12 +22,14 @@ package xnet
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"os"
 
 	"crypto/tls"
 
+	"lab.nexedi.com/kirr/go123/xcontext"
 	"lab.nexedi.com/kirr/go123/xsync"
 )
 
@@ -51,6 +53,12 @@ type Networker interface {
 	//
 	// See net.Listen for semantic details.
 	Listen(ctx context.Context, laddr string) (Listener, error)
+
+	// Close releases resources associated with the network access-point.
+	//
+	// In-progress and future network operations such as Dial and Listen,
+	// originated via this access-point, will return with an error.
+	Close() error
 }
 
 // Listener amends net.Listener for Accept to handle cancellation.
@@ -72,15 +80,25 @@ func init() {
 	hostname = host
 }
 
+var errNetClosed = errors.New("network access-point is closed")
+
+
 // NetPlain creates Networker corresponding to regular network accessors from std package net.
 //
 // network is "tcp", "tcp4", "tcp6", "unix", etc...
 func NetPlain(network string) Networker {
-	return &netPlain{network, hostname}
+	n := &netPlain{network: network, hostname: hostname}
+	n.ctx, n.cancel = context.WithCancel(context.Background())
+	return n
 }
 
 type netPlain struct {
 	network, hostname string
+
+	// ctx.cancel is merged into context of network operations.
+	// ctx is cancelled on Close.
+	ctx    context.Context
+	cancel func()
 }
 
 func (n *netPlain) Network() string {
@@ -91,17 +109,76 @@ func (n *netPlain) Name() string {
 	return n.hostname
 }
 
+func (n *netPlain) Close() error {
+	n.cancel()
+	return nil
+}
+
 func (n *netPlain) Dial(ctx context.Context, addr string) (net.Conn, error) {
-	d := net.Dialer{}
-	return d.DialContext(ctx, n.network, addr)
+	ctx, cancel := xcontext.Merge(ctx, n.ctx)
+	defer cancel()
+
+	dialErr := func(err error) error {
+		return &net.OpError{Op: "dial", Net: n.network, Addr: &strAddr{n.network, addr}, Err: err}
+	}
+
+	// don't try to call Dial if already closed / canceled
+	var conn net.Conn
+	err := ctx.Err()
+	if err == nil {
+		d := net.Dialer{}
+		conn, err = d.DialContext(ctx, n.network, addr)
+	} else {
+		err = dialErr(err)
+	}
+
+	if err != nil {
+		// convert n.ctx cancel -> "closed" error
+		if n.ctx.Err() != nil {
+			switch e := err.(type) {
+			case *net.OpError:
+				e.Err = errNetClosed
+			default:
+				// just in case
+				err = dialErr(errNetClosed)
+			}
+		}
+	}
+	return conn, err
 }
 
 func (n *netPlain) Listen(ctx context.Context, laddr string) (Listener, error) {
-	lc := net.ListenConfig{}
-	rawl, err := lc.Listen(ctx, n.network, laddr)
+	ctx, cancel := xcontext.Merge(ctx, n.ctx)
+	defer cancel()
+
+	listenErr := func(err error) error {
+		return &net.OpError{Op: "listen", Net: n.network, Addr: &strAddr{n.network, laddr}, Err: err}
+	}
+
+	// don't try to call Listen if already closed / canceled
+	var rawl net.Listener
+	err := ctx.Err()
+	if err == nil {
+		lc := net.ListenConfig{}
+		rawl, err = lc.Listen(ctx, n.network, laddr)
+	} else {
+		err = listenErr(err)
+	}
+
 	if err != nil {
+		// convert n.ctx cancel -> "closed" error
+		if n.ctx.Err() != nil {
+			switch e := err.(type) {
+			case *net.OpError:
+				e.Err = errNetClosed
+			default:
+				// just in case
+				err = listenErr(errNetClosed)
+			}
+		}
 		return nil, err
 	}
+
 	return WithCtxL(rawl), nil
 }
 
@@ -126,6 +203,10 @@ func (n *netTLS) Network() string {
 
 func (n *netTLS) Name() string {
 	return n.inner.Name()
+}
+
+func (n *netTLS) Close() error {
+	return n.inner.Close()
 }
 
 func (n *netTLS) Dial(ctx context.Context, addr string) (net.Conn, error) {
@@ -165,6 +246,17 @@ func (l *listenerTLS) Accept(ctx context.Context) (net.Conn, error) {
 	}
 	return tls.Server(conn, l.net.config), nil
 }
+
+
+// ---- misc ----
+
+// strAddr turns string into net.Addr.
+type strAddr struct {
+	net  string
+	addr string
+}
+func (a *strAddr) Network() string { return a.net  }
+func (a *strAddr) String()  string { return a.addr }
 
 
 // ----------------------------------------

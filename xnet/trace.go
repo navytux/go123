@@ -51,6 +51,7 @@ type Tracer interface {
 	TraceNetConnect(*TraceConnect)
 	TraceNetListen(*TraceListen)
 	TraceNetTx(*TraceTx)
+	// XXX +TraceNetClose?
 }
 
 // TraceDial is event corresponding to network dial start.
@@ -92,6 +93,11 @@ func (nt *netTrace) Network() string {
 
 func (nt *netTrace) Name() string {
 	return nt.inner.Name()
+}
+
+func (nt *netTrace) Close() error {
+	// XXX +trace?
+	return nt.inner.Close()
 }
 
 func (nt *netTrace) Dial(ctx context.Context, addr string) (net.Conn, error) {
