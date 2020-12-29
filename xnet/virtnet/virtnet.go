@@ -117,8 +117,10 @@ type SubNetwork struct {
 	registry Registry
 
 	// {} hostname -> Host
-	hostMu  sync.Mutex
-	hostMap map[string]*Host
+	hostMu     sync.Mutex
+	hostMap    map[string]*Host
+	nopenHosts int  // #(hosts-in-open-state) in hostMap
+	autoClose  bool // close SubNetwork when last host is Closed
 
 	down     chan struct{} // closed when no longer operational
 	downErr  error
@@ -140,8 +142,9 @@ type Host struct {
 	sockMu  sync.Mutex
 	socketv []*socket
 
-	down     chan struct{} // closed when no longer operational
-	downOnce sync.Once
+	down      chan struct{} // closed when no longer operational
+	downOnce  sync.Once
+	closeOnce sync.Once
 }
 
 var _ xnet.Networker = (*Host)(nil)
@@ -236,16 +239,19 @@ func NewSubNetwork(network string, engine Engine, registry Registry) (*SubNetwor
 //
 // The error returned is cumulative shutdown error - the cause + any error from
 // closing engine and registry for the call when shutdown was actually performed.
-func (n *SubNetwork) shutdown(err error) error {
+func (n *SubNetwork) shutdown(err error) error { return n._shutdown(err, true) }
+func (n *SubNetwork) _shutdown(err error, withHosts bool) error {
 	n.downOnce.Do(func() {
 		close(n.down)
 
 		// shutdown hosts
-		n.hostMu.Lock()
-		for _, host := range n.hostMap {
-			host.shutdown()
+		if withHosts {
+			n.hostMu.Lock()
+			for _, host := range n.hostMap {
+				host.shutdown()
+			}
+			n.hostMu.Unlock()
 		}
-		n.hostMu.Unlock()
 
 		var errv xerr.Errorv
 		errv.Appendif( err )
@@ -262,9 +268,11 @@ func (n *SubNetwork) shutdown(err error) error {
 //
 // It recursively interrupts all blocking operations on the subnetwork and
 // shutdowns all subnetwork's hosts and connections.
-func (n *SubNetwork) Close() (err error) {
+func (n *SubNetwork) Close()             (err error) { return n._close(true)  }
+func (n *SubNetwork) closeWithoutHosts() (err error) { return n._close(false) }
+func (n *SubNetwork) _close(withHosts bool) (err error) {
 	defer xerr.Contextf(&err, "virtnet %q: close", n.network)
-	return n.shutdown(nil)
+	return n._shutdown(nil, withHosts)
 }
 
 // VNetDown implements Notifier by shutting subnetwork down upon engine error.
@@ -306,6 +314,7 @@ func (n *SubNetwork) NewHost(ctx context.Context, name string) (_ *Host, err err
 
 	host := &Host{subnet: n, name: name, down: make(chan struct{})}
 	n.hostMap[name] = host
+	n.nopenHosts++
 
 	return host, nil
 }
@@ -353,8 +362,36 @@ func (h *Host) shutdown() {
 func (h *Host) Close() (err error) {
 	defer xerr.Contextf(&err, "virtnet %q: host %q: close", h.subnet.network, h.name)
 	h.shutdown()
-	return nil
+
+	// close subnet if autoclose=y and we were the last open host
+	h.closeOnce.Do(func() {
+		n := h.subnet
+		n.hostMu.Lock()
+		defer n.hostMu.Unlock()
+		n.nopenHosts--
+		if n.nopenHosts < 0 {
+			panic("SubNetwork.nopenHosts < 0")
+		}
+		if n.autoClose && n.nopenHosts == 0 {
+			err = n.closeWithoutHosts()
+		}
+	})
+
+	return err
 }
+
+// AutoClose schedules Close to be called after last host on this subnetwork is closed.
+//
+// It is an error to call AutoClose with no opened hosts - this will panic.
+func (n *SubNetwork) AutoClose() {
+	n.hostMu.Lock()
+	defer n.hostMu.Unlock()
+	if n.nopenHosts == 0 {
+		panic("BUG: no opened hosts")
+	}
+	n.autoClose = true
+}
+
 
 // Listen starts new listener on the host.
 //

@@ -382,3 +382,23 @@ func TestVNetDown(t0 *testing.T) {
 	assert.Eq(errors.Cause(err), errSomeProblem)
 	assert.Eq(err.Error(), "virtnet \"pipet\": close: some problem")
 }
+
+// TestAutoClose verifies that subnet.AutoClose() leads to subnet.Close() after
+// its last host is closed.
+func TestAutoClose(t0 *testing.T) {
+	t := newTestNet(t0)
+	X := exc.Raiseif
+	assert := xtesting.Assert(t0)
+
+	t.net.AutoClose()
+
+	hγ, err := t.net.NewHost(context.Background(), "γ");  X(err)
+	err = t.hα.Close();  X(err)
+	err = t.hβ.Close();  X(err)
+	err = hγ.Close();    X(err)
+
+	hδ, err := t.net.NewHost(context.Background(), "δ")
+	assert.Eq(hδ, (*Host)(nil))
+	assert.Eq(errors.Cause(err), ErrNetDown)
+	assert.Eq(err.Error(), "virtnet \"pipet\": new host \"δ\": network is down")
+}

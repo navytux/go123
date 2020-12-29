@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# Copyright (C) 2018  Nexedi SA and Contributors.
-#                     Kirill Smelkov <kirr@nexedi.com>
+# Copyright (C) 2018-2020  Nexedi SA and Contributors.
+#                          Kirill Smelkov <kirr@nexedi.com>
 #
 # This program is free software: you can Use, Study, Modify and Redistribute
 # it under the terms of the GNU General Public License version 3, or (at your
@@ -33,7 +33,8 @@ import functools
 import threading
 import logging as log
 
-from golang import func, go, chan, select, default, panic, gimport
+from golang import func, defer, go, chan, select, default, panic, gimport
+from golang import sync
 from golang.gcompat import qq
 
 xerr    = gimport('lab.nexedi.com/kirr/go123/xerr')
@@ -54,6 +55,8 @@ errcause= xerr.cause
 #   downOnce.Do(...)
 #
 # in Go.
+#
+# TODO just use sync.Once from pygolang.
 _oncemu = threading.Lock()
 def set_once(event):
     with _oncemu:
@@ -115,16 +118,20 @@ class VirtSubNetwork(object):
     # ._registry    Registry
     # ._hostmu      μ
     # ._hostmap     {} hostname -> Host
+    # ._nopenhosts  int
+    # ._autoclose   bool
     # ._down        chan ø
     # ._down_once   threading.Event
 
     def __init__(self, network, registry):
-        self._network   = network
-        self._registry  = registry
-        self._hostmu    = threading.Lock()
-        self._hostmap   = {}
-        self._down      = chan()
-        self._down_once = threading.Event()
+        self._network    = network
+        self._registry   = registry
+        self._hostmu     = threading.Lock()
+        self._hostmap    = {}
+        self._nopenhosts = 0
+        self._autoclose  = False
+        self._down       = chan()
+        self._down_once  = threading.Event()
 
     # must be implemented in particular virtnet implementation
     def _vnet_newhost(self, hostname, registry):    raise NotImplementedError()
@@ -140,14 +147,16 @@ class Host(object):
     # ._socketv     []socket ; port -> listener | conn ; [0] is always None
     # ._down        chan ø
     # ._down_once   threading.Event
+    # ._close_once  sync.Once
 
     def __init__(self, subnet, name):
-        self._subnet    = subnet
-        self._name      = name
-        self._sockmu    = threading.Lock()
-        self._socketv   = []
-        self._down      = chan()
-        self._down_once = threading.Event()
+        self._subnet     = subnet
+        self._name       = name
+        self._sockmu     = threading.Lock()
+        self._socketv    = []
+        self._down       = chan()
+        self._down_once  = threading.Event()
+        self._close_once = sync.Once()
 
 
 # socket represents one endpoint entry on Host.
@@ -222,14 +231,18 @@ class Accept(object):
 # _shutdown is worker for close and _vnet_down.
 @func(VirtSubNetwork)
 def _shutdown(n, exc):
+    n.__shutdown(exc, True)
+@func(VirtSubNetwork)
+def __shutdown(n, exc, withHosts):
     if not set_once(n._down_once):
         return
 
     n._down.close()
 
-    with n._hostmu:
-        for host in n._hostmap.values():
-            host._shutdown()
+    if withHosts:
+        with n._hostmu:
+            for host in n._hostmap.values():
+                host._shutdown()
 
     # XXX py: we don't collect / remember .downErr
     if exc is not None:
@@ -241,8 +254,14 @@ def _shutdown(n, exc):
 # close shutdowns subnetwork.
 @func(VirtSubNetwork)
 def close(n):
+    n.__close(True)
+@func(VirtSubNetwork)
+def _closeWithoutHosts(n):
+    n.__close(False)
+@func(VirtSubNetwork)
+def __close(n, withHosts):
     with errctx("virtnet %s: close" % qq(n._network)):
-        n._shutdown(None)
+        n.__shutdown(None, withHosts)
 
 # _vnet_down shutdowns subnetwork upon engine error.
 @func(VirtSubNetwork)
@@ -265,6 +284,7 @@ def new_host(n, name):
 
             host = Host(n, name)
             n._hostmap[name] = host
+            n._nopenhosts += 1
             return host
 
 
@@ -295,8 +315,28 @@ def _shutdown(h):
 # close shutdowns host.
 @func(Host)
 def close(h):
+    def autoclose():
+        def _():
+            n = h._subnet
+            with n._hostmu:
+                n._nopenHosts -= 1
+                if n._nopenHosts < 0:
+                    panic("SubNetwork._nopenHosts < 0")
+                if n._autoclose and n._nopenHosts == 0:
+                    n._closeWithoutHosts()
+        h._close_once.do(_)
+    defer(autoclose)
+
     with errctx("virtnet %s: host %s: close" % (qq(h._subnet._network), qq(h._name))):
         h._shutdown()
+
+# autoclose schedules close to be called after last host on this subnetwork is closed.
+@func(VirtSubNetwork)
+def autoclose(n):
+    with n._hostmu:
+        if n._nopenHosts == 0:
+            panic("BUG: no opened hosts")
+        n._autoclose = True
 
 
 # listen starts new listener on the host.
