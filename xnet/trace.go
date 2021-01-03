@@ -1,4 +1,4 @@
-// Copyright (C) 2017-2020  Nexedi SA and Contributors.
+// Copyright (C) 2017-2021  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -41,12 +41,12 @@ import (
 //    - for similar reasons.
 //
 // WARNING NetTrace functionality is currently very draft.
-func NetTrace(inner Networker, tracer Tracer) Networker {
-	return &netTrace{inner, tracer}
+func NetTrace(inner Networker, tracerx TraceReceiver) Networker {
+	return &netTrace{inner, tracerx}
 }
 
-// Tracer is the interface that needs to be implemented by network trace receivers.
-type Tracer interface {
+// TraceReceiver is the interface that needs to be implemented by network trace receivers.
+type TraceReceiver interface {
 	TraceNetDial(*TraceDial)
 	TraceNetConnect(*TraceConnect)
 	TraceNetListen(*TraceListen)
@@ -83,8 +83,8 @@ type TraceTx struct {
 // netTrace wraps underlying Networker such that whenever a connection is created
 // it is wrapped with traceConn.
 type netTrace struct {
-	inner  Networker
-	tracer Tracer
+	inner Networker
+	rx    TraceReceiver
 }
 
 func (nt *netTrace) Network() string {
@@ -101,12 +101,12 @@ func (nt *netTrace) Close() error {
 }
 
 func (nt *netTrace) Dial(ctx context.Context, addr string) (net.Conn, error) {
-	nt.tracer.TraceNetDial(&TraceDial{Dialer: nt.inner.Name(), Addr: addr})
+	nt.rx.TraceNetDial(&TraceDial{Dialer: nt.inner.Name(), Addr: addr})
 	c, err := nt.inner.Dial(ctx, addr)
 	if err != nil {
 		return nil, err
 	}
-	nt.tracer.TraceNetConnect(&TraceConnect{Src: c.LocalAddr(), Dst: c.RemoteAddr(), Dialed: addr})
+	nt.rx.TraceNetConnect(&TraceConnect{Src: c.LocalAddr(), Dst: c.RemoteAddr(), Dialed: addr})
 	return &traceConn{nt, c}, nil
 }
 
@@ -116,7 +116,7 @@ func (nt *netTrace) Listen(ctx context.Context, laddr string) (Listener, error) 
 	if err != nil {
 		return nil, err
 	}
-	nt.tracer.TraceNetListen(&TraceListen{Laddr: l.Addr()})
+	nt.rx.TraceNetListen(&TraceListen{Laddr: l.Addr()})
 	return &netTraceListener{nt, l}, nil
 }
 
@@ -144,7 +144,7 @@ func (tc *traceConn) Write(b []byte) (int, error) {
 	// XXX +TraceNetTxPre ?
 	n, err := tc.Conn.Write(b)
 	if err == nil {
-		tc.nt.tracer.TraceNetTx(&TraceTx{Src: tc.LocalAddr(), Dst: tc.RemoteAddr(), Pkt: b})
+		tc.nt.rx.TraceNetTx(&TraceTx{Src: tc.LocalAddr(), Dst: tc.RemoteAddr(), Pkt: b})
 	}
 	return n, err
 }
