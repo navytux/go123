@@ -41,8 +41,8 @@ import (
 //    - for similar reasons.
 //
 // WARNING NetTrace functionality is currently very draft.
-func NetTrace(inner Networker, tracerx TraceReceiver) Networker {
-	return &netTrace{inner, tracerx}
+func NetTrace(inner Networker, tracerx TraceReceiver) *Tracer {
+	return &Tracer{inner, tracerx}
 }
 
 // TraceReceiver is the interface that needs to be implemented by network trace receivers.
@@ -80,49 +80,55 @@ type TraceTx struct {
 	Pkt      []byte
 }
 
-// netTrace wraps underlying Networker such that whenever a connection is created
-// it is wrapped with traceConn.
-type netTrace struct {
+// Tracer wraps underlying Networker to emit events on networking operations.
+//
+// Create it via NetTrace.
+type Tracer struct {
 	inner Networker
 	rx    TraceReceiver
 }
 
-func (nt *netTrace) Network() string {
-	return nt.inner.Network() // XXX + "+trace" ?
+// Network implements Networker.
+func (t *Tracer) Network() string {
+	return t.inner.Network() // XXX + "+trace" ?
 }
 
-func (nt *netTrace) Name() string {
-	return nt.inner.Name()
+// Name implements Networker.
+func (t *Tracer) Name() string {
+	return t.inner.Name()
 }
 
-func (nt *netTrace) Close() error {
+// Close implements Networker.
+func (t *Tracer) Close() error {
 	// XXX +trace?
-	return nt.inner.Close()
+	return t.inner.Close()
 }
 
-func (nt *netTrace) Dial(ctx context.Context, addr string) (net.Conn, error) {
-	nt.rx.TraceNetDial(&TraceDial{Dialer: nt.inner.Name(), Addr: addr})
-	c, err := nt.inner.Dial(ctx, addr)
+// Dial implements Networker.
+func (t *Tracer) Dial(ctx context.Context, addr string) (net.Conn, error) {
+	t.rx.TraceNetDial(&TraceDial{Dialer: t.inner.Name(), Addr: addr})
+	c, err := t.inner.Dial(ctx, addr)
 	if err != nil {
 		return nil, err
 	}
-	nt.rx.TraceNetConnect(&TraceConnect{Src: c.LocalAddr(), Dst: c.RemoteAddr(), Dialed: addr})
-	return &traceConn{nt, c}, nil
+	t.rx.TraceNetConnect(&TraceConnect{Src: c.LocalAddr(), Dst: c.RemoteAddr(), Dialed: addr})
+	return &traceConn{t, c}, nil
 }
 
-func (nt *netTrace) Listen(ctx context.Context, laddr string) (Listener, error) {
+// Listen implements Networker.
+func (t *Tracer) Listen(ctx context.Context, laddr string) (Listener, error) {
 	// XXX +TraceNetListenPre ?
-	l, err := nt.inner.Listen(ctx, laddr)
+	l, err := t.inner.Listen(ctx, laddr)
 	if err != nil {
 		return nil, err
 	}
-	nt.rx.TraceNetListen(&TraceListen{Laddr: l.Addr()})
-	return &netTraceListener{nt, l}, nil
+	t.rx.TraceNetListen(&TraceListen{Laddr: l.Addr()})
+	return &netTraceListener{t, l}, nil
 }
 
 // netTraceListener wraps net.Listener to wrap accepted connections with traceConn.
 type netTraceListener struct {
-	nt           *netTrace
+	t        *Tracer
 	Listener
 }
 
@@ -131,12 +137,12 @@ func (ntl *netTraceListener) Accept(ctx context.Context) (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &traceConn{ntl.nt, c}, nil
+	return &traceConn{ntl.t, c}, nil
 }
 
 // traceConn wraps net.Conn and notifies tracer on Writes.
 type traceConn struct {
-	nt       *netTrace
+	t        *Tracer
 	net.Conn
 }
 
@@ -144,7 +150,7 @@ func (tc *traceConn) Write(b []byte) (int, error) {
 	// XXX +TraceNetTxPre ?
 	n, err := tc.Conn.Write(b)
 	if err == nil {
-		tc.nt.rx.TraceNetTx(&TraceTx{Src: tc.LocalAddr(), Dst: tc.RemoteAddr(), Pkt: b})
+		tc.t.rx.TraceNetTx(&TraceTx{Src: tc.LocalAddr(), Dst: tc.RemoteAddr(), Pkt: b})
 	}
 	return n, err
 }
