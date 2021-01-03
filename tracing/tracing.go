@@ -1,4 +1,4 @@
-// Copyright (C) 2017-2020  Nexedi SA and Contributors.
+// Copyright (C) 2017-2021  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -146,7 +146,7 @@ a set of goroutines in tested code in question
 	- produce events in correct order, and
 	- at every event associated internal state is correct.
 
-TODO example.
+Please see package lab.nexedi.com/kirr/go123/tracing/tracetest for details.
 
 
 Cross package tracing
