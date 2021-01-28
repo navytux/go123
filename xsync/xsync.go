@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2020  Nexedi SA and Contributors.
+// Copyright (C) 2019-2021  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -21,8 +21,10 @@
 //
 //  - `WorkGroup` allows to spawn group of goroutines working on a common task.
 //
-// Functionality provided by xsync package is also provided by Pygolang in its
+// Functionality provided by xsync package is also provided by Pygolang(*) in its
 // standard package sync.
+//
+// (*) https://pypi.org/project/pygolang
 package xsync
 
 import (
