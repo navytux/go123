@@ -1,5 +1,5 @@
-// Copyright (C) 2017  Nexedi SA and Contributors.
-//                     Kirill Smelkov <kirr@nexedi.com>
+// Copyright (C) 2017-2021  Nexedi SA and Contributors.
+//                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
 // it under the terms of the GNU General Public License version 3, or (at your
@@ -237,7 +237,7 @@ func parseGoStart(args string) (goStart, error) {
 	}
 
 	// double-check g is the same
-	g2, err := strconv.Atoi(argv[3])
+	g2, _ := strconv.Atoi(argv[3])
 	if g2 != gstart.g {
 		log.Print("found GoStart with different g")
 		return goStart{}, gStartArgvErr

@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020  Nexedi SA and Contributors.
+// Copyright (C) 2018-2021  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -80,7 +80,7 @@ func TestLonetGoPy(t *testing.T) {
 
 		_, err = c1.Write([]byte("hello py")); X(err)
 		buf := make([]byte, 1024)
-		n, err := c1.Read(buf)
+		n, err := c1.Read(buf); X(err)
 		buf = buf[:n]
 		if want := "hello go"; string(buf) != want {
 			exc.Raisef("go<-py: got %q; want %q", buf, want)
@@ -93,7 +93,7 @@ func TestLonetGoPy(t *testing.T) {
 		assert.Eq(c2.RemoteAddr(), xaddr("β:2"))
 
 		buf = make([]byte, 1024)
-		n, err = c2.Read(buf)
+		n, err = c2.Read(buf); X(err)
 		buf = buf[:n]
 		if want := "hello2 go"; string(buf) != want {
 			exc.Raisef("go<-py 2: got %q; want %q", buf, want)

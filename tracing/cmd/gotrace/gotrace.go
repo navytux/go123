@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2019  Nexedi SA and Contributors.
+// Copyright (C) 2018-2021  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -816,6 +816,9 @@ func tracegen1(P *Program, tpkg *Package, pkgdir string, kind string) error {
 			}{
 				timport,
 				traceExportHash(impPkg, "" /*regular package*/)})
+			if err != nil {
+				return err // XXX err ctx
+			}
 
 			text.emit("")
 

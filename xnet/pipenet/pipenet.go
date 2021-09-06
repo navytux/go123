@@ -1,4 +1,4 @@
-// Copyright (C) 2017-2020  Nexedi SA and Contributors.
+// Copyright (C) 2017-2021  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -148,7 +148,7 @@ func (n *Network) Host(name string) *virtnet.Host {
 	// down, but won't remove it from vnet .hostMap.
 	host = n.vnet.Host(name)
 	if host == nil {
-		panic(fmt.Sprintf("pipenet: NewHost said host already is there, but it was not found"))
+		panic("pipenet: NewHost said host already is there, but it was not found")
 	}
 
 	return host

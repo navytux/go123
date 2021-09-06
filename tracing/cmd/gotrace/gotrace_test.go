@@ -1,5 +1,5 @@
-// Copyright (C) 2017  Nexedi SA and Contributors.
-//                     Kirill Smelkov <kirr@nexedi.com>
+// Copyright (C) 2017-2021  Nexedi SA and Contributors.
+//                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
 // it under the terms of the GNU General Public License version 3, or (at your
@@ -34,16 +34,6 @@ import (
 
 	"lab.nexedi.com/kirr/go123/exc"
 )
-
-func xglob(t *testing.T, pattern string) []string {
-	t.Helper()
-	matchv, err := filepath.Glob(pattern)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return matchv
-}
-
 
 type TreePrepareMode int
 const (
