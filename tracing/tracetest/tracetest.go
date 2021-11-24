@@ -292,7 +292,7 @@ func (t *T) Fatalf(format string, argv ...interface{}) {
 	t.FailNow()
 }
 
-// closeStreamTab prints details about pending event on streamTab, naks them
+// closeStreamTab prints details about pending events on streamTab, naks them
 // and closes all channels. It returns the number of naked messages.
 func (t *T) closeStreamTab() (nnak int) {
 	t.Helper()
@@ -476,7 +476,7 @@ func (t *T) xget1(stream string, eventp interface{}) *_Msg {
 	t.mu.Unlock()
 
 	if ch == nil {
-		t.Fatalf("%s: recv: cancled (test failed)", stream)
+		t.Fatalf("%s: recv: canceled (test failed)", stream)
 	}
 
 	return ch.RecvInto(eventp)
