@@ -188,6 +188,24 @@ func TestRace(t *testing.T) {
 
 // other tests (mainly to verify tracetest itself)
 
+// TestDeadlockExtra demonstrates deadlock detection when there is extra event
+// not consumed by main checker.
+func TestDeadlockExtra(t *testing.T) {
+	verify(t, func(t *tracetest.T) {
+		var wg sync.WaitGroup
+		defer wg.Wait()
+		wg.Add(1)
+
+		go func() { // thread 1
+			defer wg.Done()
+			hi("T1·A")
+			hi("T1·Extra")
+		}()
+
+		t.Expect("t1", eventHi("T1·A"))
+	}, "-tracetest.deadtime=0.5s")
+}
+
 // TestExpectType demonstrates Expect asserting with "unexpected event type".
 func TestExpectType(t *testing.T) {
 	verify(t, func(t *tracetest.T) {
@@ -302,7 +320,7 @@ var testExpectMap = map[string]testExpect{
         t1	<- tracetest_test.eventHi T1·A
         # t2
 
-    tracetest.go:<LINE>: chan.go:<LINE>: t1: send: canceled (test failed)
+    tracetest.go:<LINE>: chan.go:<LINE>: t1: send: deadlock
 `},
 
 	"TestRace":       {1,
@@ -315,10 +333,19 @@ var testExpectMap = map[string]testExpect{
             +"x·B"
 `},
 
+	"TestDeadlockExtra": {1,
+`Hi, T1·A
+--- FAIL: TestDeadlockExtra (<TIME>)
+    tracetest.go:<LINE>: test shutdown: #streams: 1,  #(pending events): 1
+        t1	<- tracetest_test.eventHi T1·Extra
+
+    tracetest.go:<LINE>: chan.go:<LINE>: t1: send: deadlock
+`},
+
 	"TestExpectType": {1,
 `--- FAIL: TestExpectType (<TIME>)
-    example_test.go:203: t1: expect: tracetest_test.eventHello:  got tracetest_test.eventHi T1·A
-    example_test.go:203: test shutdown: #streams: 1,  #(pending events): 0
+    example_test.go:221: t1: expect: tracetest_test.eventHello:  got tracetest_test.eventHi T1·A
+    example_test.go:221: test shutdown: #streams: 1,  #(pending events): 0
         # t1
 
     tracetest.go:<LINE>: chan.go:<LINE>: t1: send: unexpected event type
@@ -326,14 +353,14 @@ var testExpectMap = map[string]testExpect{
 
 	"TestExpectValue": {1,
 `--- FAIL: TestExpectValue (<TIME>)
-    example_test.go:219: t1: expect: tracetest_test.eventHi:
+    example_test.go:237: t1: expect: tracetest_test.eventHi:
         want: T1·B
         have: T1·A
         diff:
         -"T1·B"
         +"T1·A"
 
-    example_test.go:219: test shutdown: #streams: 1,  #(pending events): 0
+    example_test.go:237: test shutdown: #streams: 1,  #(pending events): 0
         # t1
 
     tracetest.go:<LINE>: chan.go:<LINE>: t1: send: unexpected event data

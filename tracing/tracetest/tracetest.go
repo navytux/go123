@@ -336,6 +336,12 @@ func (t *T) closeStreamTab() (nnak int) {
 				break loop
 			}
 		}
+		// include ch.unsentv into pending as well (we want to show
+		// such events as pending even if corresponding send deadlocked).
+		for _, msg := range ch.unsentv {
+			sendv = append(sendv, sendInfo{ch, msg})
+			quiet = false
+		}
 
 		if quiet {
 			quietv = append(quietv, ch)

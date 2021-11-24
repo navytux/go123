@@ -54,25 +54,44 @@ type _chan struct {
 	name string        // name of the channel/stream
 	msgq chan *_Msg
 	down chan struct{} // becomes ready when closed
+
+	// messages that were not sent due to e.g. detected deadlock.
+	// T includes these in final printout for pending events
+	// protected by t.mu
+	unsentv []*_Msg
 }
 
 // Send sends event to a consumer and waits for ack.
 // if main testing goroutine detects any problem Send panics.
 func (ch *_chan) Send(event interface{}) {
+	t := ch.t
 	if *chatty {
 		fmt.Printf("%s <- %T %v\n", ch.name, event, event)
 	}
-	ack := make(chan error)
+	ack := make(chan error, 1)
+	msg := &_Msg{event, ack}
+	unsentWhy := ""
 	select {
-	case <-ch.down:
-		ch.t.fatalfInNonMain("%s: send: channel was closed", ch.name)
-
-	case ch.msgq <- &_Msg{event, ack}:
+	case ch.msgq <- msg:
 		err := <-ack
 		if err != nil {
-			ch.t.fatalfInNonMain("%s: send: %s", ch.name, err)
+			t.fatalfInNonMain("%s: send: %s", ch.name, err)
 		}
+		return
+
+	case <-ch.down:
+		unsentWhy = "channel was closed"
+
+	case <-time.After(*deadTime):
+		unsentWhy = "deadlock"
 	}
+
+	// remember event as still "send-pending"
+	t.mu.Lock()
+	ch.unsentv = append(ch.unsentv, msg)
+	t.mu.Unlock()
+
+	t.fatalfInNonMain("%s: send: %s", ch.name, unsentWhy)
 }
 
 // Close closes the sending side of the channel.
