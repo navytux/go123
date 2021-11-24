@@ -302,7 +302,7 @@ var testExpectMap = map[string]testExpect{
         t1	<- tracetest_test.eventHi T1·A
         # t2
 
-    chan.go:<LINE>: t1: send: canceled (test failed)
+    tracetest.go:<LINE>: chan.go:<LINE>: t1: send: canceled (test failed)
 `},
 
 	"TestRace":       {1,
@@ -321,7 +321,7 @@ var testExpectMap = map[string]testExpect{
     example_test.go:203: test shutdown: #streams: 1,  #(pending events): 0
         # t1
 
-    chan.go:<LINE>: t1: send: unexpected event type
+    tracetest.go:<LINE>: chan.go:<LINE>: t1: send: unexpected event type
 `},
 
 	"TestExpectValue": {1,
@@ -336,6 +336,6 @@ var testExpectMap = map[string]testExpect{
     example_test.go:219: test shutdown: #streams: 1,  #(pending events): 0
         # t1
 
-    chan.go:<LINE>: t1: send: unexpected event data
+    tracetest.go:<LINE>: chan.go:<LINE>: t1: send: unexpected event data
 `},
 }

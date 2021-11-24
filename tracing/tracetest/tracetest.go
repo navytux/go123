@@ -103,6 +103,7 @@ package tracetest
 
 import (
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -113,6 +114,8 @@ import (
 	"time"
 
 	"github.com/kylelemons/godebug/pretty"
+
+	"lab.nexedi.com/kirr/go123/xruntime"
 )
 
 
@@ -137,7 +140,8 @@ type T struct {
 	tracev         []eventTrace // record of events as they happen
 	delayInjectTab map[/*stream*/string]*delayInjectState
 
-	nakq []nak // naks queued to be sent after Fatal
+	nakq []nak    // naks queued to be sent after Fatal
+	logq []string // queued log messages prepared in fatalfInNonMain
 }
 
 // eventTrace keeps information about one event T received via RxEvent.
@@ -180,7 +184,13 @@ func run(t testing.TB, f func(t *T), delayInjectTab map[string]*delayInjectState
 	defer func() {
 		nnak := tT.closeStreamTab()
 		if nnak != 0 {
-			t.Fatal()
+			tT.Fail()
+		}
+		// log messages queued by fatalfInNonMain
+		for _, msg := range tT.logq {
+			// TODO try to log without hereby file:line, because msg
+			// already has file:line corresponding to logged event source location.
+			tT.Log(msg)
 		}
 	}()
 
@@ -514,13 +524,43 @@ func (t *T) expect1(stream string, eventExpect interface{}) *_Msg {
 func (t *T) fatalfInNonMain(format string, argv ...interface{}) {
 	t.Helper()
 
+	if !strings.HasSuffix(format, "\n") {
+		format += "\n"
+	}
+	msg := fmt.Sprintf(format, argv...)
+	msg += fmt.Sprintf("%s\n", debug.Stack())
+
+	// manually include file:line so that message is logged with correct
+	// location when emitted via logq.
+	// XXX t.Helper() not taken into account
+	f := xruntime.Traceback(2)[0] // XXX we need only first caller, not full traceback
+	msg = fmt.Sprintf("%s:%d: %s", filepath.Base(f.File), f.Line, msg)
+
 	// serialize fatal log+traceback printout, so that such printouts from
 	// multiple goroutines do not get intermixed.
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	t.Logf(format, argv...)
-	t.Logf("%s\n", debug.Stack())
+	if t.streamTab == nil {
+		// t is over -> log directly.
+		// make sure to prefix log message the same way as would be
+		// done when messages are logged via .logq .
+		t.logFromTracetest_go(msg)
+	} else {
+		// remember msg to be logged when t is done so that non-main
+		// log output always come after main printout. The messages
+		// won't be intermixed because t.Log is serialized internally.
+		t.logq = append(t.logq, msg)
+	}
+
 	t.Fail()
 	runtime.Goexit()
+}
+
+// logFromTracetest_go calls t.Log without wrapping it with t.Helper().
+//
+// as the result the message is prefixed with tracetest.go:<LINE>, not the
+// location of fatalfInNonMain caller.
+func (t *T) logFromTracetest_go(msg string) {
+	t.Log(msg)
 }
