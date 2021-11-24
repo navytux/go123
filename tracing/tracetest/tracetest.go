@@ -313,11 +313,21 @@ func (t *T) closeStreamTab() (nnak int) {
 
 	for _, stream := range streams {
 		ch := streamTab[stream]
+		quiet := true
+
 		// check whether someone is sending on channels without blocking.
-		select {
-		case msg := <-ch.msgq:
-			sendv = append(sendv, sendInfo{ch, msg})
-		default:
+	loop:	// loop because there might be several concurrent pending sends to particular channel.
+		for {
+			select {
+			case msg := <-ch.msgq:
+				sendv = append(sendv, sendInfo{ch, msg})
+				quiet = false
+			default:
+				break loop
+			}
+		}
+
+		if quiet {
 			quietv = append(quietv, ch)
 		}
 	}
