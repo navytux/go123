@@ -289,9 +289,9 @@ func (t *T) closeStreamTab() (nnak int) {
 
 	// mark streamTab no longer operational
 	t.mu.Lock()
+	defer t.mu.Unlock()
 	streamTab := t.streamTab
 	t.streamTab = nil
-	t.mu.Unlock()
 
 	if streamTab == nil {
 		return // already closed
@@ -501,14 +501,13 @@ func (t *T) expect1(stream string, eventExpect interface{}) *_Msg {
 //
 // we don't panic because it will stop the process and prevent the main
 // goroutine to print detailed reason for e.g. deadlock or other error.
-var fatalLogMu sync.Mutex
 func (t *T) fatalfInNonMain(format string, argv ...interface{}) {
 	t.Helper()
 
 	// serialize fatal log+traceback printout, so that such printouts from
 	// multiple goroutines do not get intermixed.
-	fatalLogMu.Lock()
-	defer fatalLogMu.Unlock()
+	t.mu.Lock()
+	defer t.mu.Unlock()
 
 	t.Logf(format, argv...)
 	t.Logf("%s\n", debug.Stack())
