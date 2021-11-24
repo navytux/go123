@@ -512,5 +512,6 @@ func (t *T) fatalfInNonMain(format string, argv ...interface{}) {
 
 	t.Logf(format, argv...)
 	t.Logf("%s\n", debug.Stack())
+	t.Fail()
 	runtime.Goexit()
 }
