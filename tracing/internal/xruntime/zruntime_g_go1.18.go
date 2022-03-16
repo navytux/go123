@@ -106,7 +106,7 @@ type stack struct {
 }
 type _panic struct {
 	argp      unsafe.Pointer // pointer to arguments of deferred call run during panic; cannot move - known to liblink
-	arg       interface{}    // argument to panic
+	arg       any            // argument to panic
 	link      *_panic        // link to earlier panic
 	pc        uintptr        // where to return to in runtime if this panic is bypassed
 	sp        unsafe.Pointer // where to return to in runtime if this panic is bypassed
@@ -176,8 +176,8 @@ type timer struct {
 	// when must be positive on an active timer.
 	when   int64
 	period int64
-	f      func(interface{}, uintptr)
-	arg    interface{}
+	f      func(any, uintptr)
+	arg    any
 	seq    uintptr
 
 	// What to set the when field to in timerModifiedXX status.
