@@ -1033,7 +1033,7 @@ var commands = prog.CommandRegistry{
 }
 
 var helpTopics = prog.HelpRegistry{
-        // XXX for now empty
+	// XXX for now empty
 }
 
 var gotrace = prog.MainProg{

@@ -19,7 +19,7 @@
 
 // Package xcontext provides addons to std package context.
 //
-// Merging contexts
+// # Merging contexts
 //
 // Merge could be handy in situations where spawned job needs to be canceled
 // whenever any of 2 contexts becomes done. This frequently arises with service
@@ -84,9 +84,9 @@ type mergeCtx struct {
 //
 // The result context:
 //
-//	- is done when parent1 or parent2 is done, or cancel called, whichever happens first,
-//	- has deadline = min(parent1.Deadline, parent2.Deadline),
-//	- has associated values merged from parent1 and parent2, with parent1 taking precedence.
+//   - is done when parent1 or parent2 is done, or cancel called, whichever happens first,
+//   - has deadline = min(parent1.Deadline, parent2.Deadline),
+//   - has associated values merged from parent1 and parent2, with parent1 taking precedence.
 //
 // Canceling this context releases resources associated with it, so code should
 // call cancel as soon as the operations running in this Context complete.
@@ -229,9 +229,9 @@ type chanCtx struct {
 //
 // MergeChan, similarly to Merge, provides resulting context which:
 //
-//	- is done when parent1 is done or done2 is closed, or cancel called, whichever happens first,
-//	- has the same deadline as parent1,
-//	- has the same associated values as parent1.
+//   - is done when parent1 is done or done2 is closed, or cancel called, whichever happens first,
+//   - has the same deadline as parent1,
+//   - has the same associated values as parent1.
 //
 // Canceling this context releases resources associated with it, so code should
 // call cancel as soon as the operations running in this Context complete.

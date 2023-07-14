@@ -20,6 +20,7 @@
 // As of go19 sync.Pool under race-detector randomly drops items on the floor
 // https://github.com/golang/go/blob/ca360c39/src/sync/pool.go#L92
 // so it is not possible to verify we will get what we've just put there.
+//go:build !race
 // +build !race
 
 package mem

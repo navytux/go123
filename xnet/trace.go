@@ -35,11 +35,11 @@ import (
 // only initiation events are traced:
 //
 // 1. Tx only (no Rx):
-//    - because Write, contrary to Read, never writes partial data on non-error
-//    - because in case of pipenet tracing writes only is enough to get whole network exchange picture
+//   - because Write, contrary to Read, never writes partial data on non-error
+//   - because in case of pipenet tracing writes only is enough to get whole network exchange picture
 //
 // 2. Dial only (no Accept)
-//    - for similar reasons.
+//   - for similar reasons.
 //
 // WARNING NetTrace functionality is currently very draft.
 func NetTrace(inner Networker, tracerx TraceReceiver) *Tracer {

@@ -37,7 +37,7 @@ var (
 //
 // The goroutine which sent the message will wait for Ack before continue.
 type _Msg struct {
-	Event interface {}
+	Event interface{}
 	ack   chan<- error // nil on Ack; !nil on nak
 }
 

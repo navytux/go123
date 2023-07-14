@@ -20,7 +20,7 @@
 /*
 Package tracing provides usage and runtime support for Go tracing facilities.
 
-Trace events
+# Trace events
 
 A Go package can define several events of interest to trace via special
 comments. With such definition a tracing event becomes associated with trace
@@ -40,7 +40,7 @@ function that is used to signal when the event happens. For example:
 By default using trace function does nothing and has very small overhead(*).
 
 
-Probes
+# Probes
 
 However it is possible to attach probing functions to events. A probe, once
 attached, is called whenever event is signalled in the context which triggered
@@ -95,12 +95,12 @@ all at once using ProbeGroup:
 Probes is general mechanism which allows various kinds of trace events usage.
 Three ways particularly are well-understood and handy:
 
-	- recording events stream
-	- profiling
-	- synchronous tracing
+  - recording events stream
+  - profiling
+  - synchronous tracing
 
 
-Recording events stream
+# Recording events stream
 
 To get better understanding of what happens when it is possible to record
 events into a stream and later either visualize or postprocess them.
@@ -117,7 +117,7 @@ understood by chromium trace-viewer: https://github.com/catapult-project/catapul
 
 NOTE there is also talk/work to implement user events for runtime/trace: https://golang.org/issues/16619.
 
-Profiling
+# Profiling
 
 A profile is aggregate summary of collection of stack traces showing the call sequences that led
 to instances of a particular event. One could create runtime/pprof.Profile and
@@ -131,25 +131,25 @@ XXX Profile.Add needs unique value for each invocation - how do we do? Provide N
 XXX should tracing provide more tight integration with runtime/pprof.Profile?
 
 
-Synchronous tracing
+# Synchronous tracing
 
 For testing purposes it is sometimes practical to leverage the property that
 probes pause original code execution until the probe run is finished. That
 means while the probe is running original goroutine
 
-	- is paused at well-defined point (where trace function is called), thus
-	- it cannot mutate any state it is programmed to mutate.
+  - is paused at well-defined point (where trace function is called), thus
+  - it cannot mutate any state it is programmed to mutate.
 
 Using this properties it is possible to attach testing probes and verify that
 a set of goroutines in tested code in question
 
-	- produce events in correct order, and
-	- at every event associated internal state is correct.
+  - produce events in correct order, and
+  - at every event associated internal state is correct.
 
 Please see package lab.nexedi.com/kirr/go123/tracing/tracetest for details.
 
 
-Cross package tracing
+# Cross package tracing
 
 Trace events are not part of exported package API with rationale that package's
 regular API and internal trace events usually have different stability
@@ -172,7 +172,7 @@ available as regular functions prefixed with imported package name:
 	...
 
 
-Gotrace
+# Gotrace
 
 The way //trace:event and //trace:import work is via additional code being
 generated for them. Whenever a package uses any //trace: directive,

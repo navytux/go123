@@ -112,9 +112,10 @@ func Raisef(format string, a ...interface{}) {
 // Raiseif raises if err != nil.
 //
 // NOTE err can be != nil even if typed obj = nil:
-//   var obj *T;
-//   err = obj
-//   err != nil     is true
+//
+//	var obj *T;
+//	err = obj
+//	err != nil     is true
 func Raiseif(err error) {
 	//if err != nil && !reflect.ValueOf(err).IsNil() {
 	if err != nil {

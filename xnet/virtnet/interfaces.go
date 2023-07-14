@@ -136,10 +136,10 @@ type Accept struct {
 //
 // The registry could be implemented in several ways, for example:
 //
-//	- dedicated network server,
-//	- hosts broadcasting information to each other similar to ARP,
-//	- shared memory or file,
-//	- ...
+//   - dedicated network server,
+//   - hosts broadcasting information to each other similar to ARP,
+//   - shared memory or file,
+//   - ...
 //
 // It should be safe to access registry from multiple goroutines simultaneously.
 type Registry interface {

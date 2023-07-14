@@ -17,6 +17,7 @@
 // See COPYING file for full licensing terms.
 // See https://www.nexedi.com/licensing for rationale and options.
 
+//go:build go1.9
 // +build go1.9
 
 // Package xmath provides addons to std math package.

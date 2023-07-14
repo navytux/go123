@@ -79,7 +79,7 @@ func TestStartStopTheWorld(t *testing.T) {
 	nδ := 0
 	tstart := time.Now()
 	for time.Now().Sub(tstart) < time.Second {
-		for i := 0; i < 100 ; i++ {
+		for i := 0; i < 100; i++ {
 			xnext = atomic.LoadInt32(&x)
 			if xnext != xprev {
 				nδ += 1

@@ -19,7 +19,7 @@
 
 // Package xsync complements standard package sync.
 //
-//  - `WorkGroup` allows to spawn group of goroutines working on a common task.
+//   - `WorkGroup` allows to spawn group of goroutines working on a common task.
 //
 // Functionality provided by xsync package is also provided by Pygolang(*) in its
 // standard package sync.
@@ -37,17 +37,17 @@ import (
 // Use .Go() to spawn goroutines, and .Wait() to wait for all of them to
 // complete, for example:
 //
-//   wg := xsync.NewWorkGroup(ctx)
-//   wg.Go(f1)
-//   wg.Go(f2)
-//   err := wg.Wait()
+//	wg := xsync.NewWorkGroup(ctx)
+//	wg.Go(f1)
+//	wg.Go(f2)
+//	err := wg.Wait()
 //
 // Every spawned function accepts context related to the whole work and derived
 // from ctx used to initialize WorkGroup, for example:
 //
-//   func f1(ctx context.Context) error {
-//       ...
-//   }
+//	func f1(ctx context.Context) error {
+//	    ...
+//	}
 //
 // Whenever a function returns error, the work context is canceled indicating
 // to other spawned goroutines that they have to cancel their work. .Wait()

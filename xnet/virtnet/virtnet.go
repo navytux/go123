@@ -27,8 +27,7 @@
 // Package virtnet provides infrastructure for using and implementing such
 // TCP-like virtual networks.
 //
-//
-// Using virtnet networks
+// # Using virtnet networks
 //
 // Addresses on a virtnet network are host:port pairs represented by Addr.
 // A network conceptually consists of several SubNetworks each being home for
@@ -49,8 +48,7 @@
 // lab.nexedi.com/kirr/go123/xnet/pipenet for particular well-known
 // virtnet-based networks.
 //
-//
-// Implementing virtnet networks
+// # Implementing virtnet networks
 //
 // To implement a virtnet-based network one need to implement Engine and Registry.
 //

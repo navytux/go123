@@ -159,8 +159,8 @@ const serialOnly testFlag = 1
 //
 // two scenarios are verified:
 //
-//	- serial case: first close, then test, and
-//	- concurrent case: close is run in parallel to test.
+//   - serial case: first close, then test, and
+//   - concurrent case: close is run in parallel to test.
 //
 // if concurrent case is not applicable for test (e.g. it tries to run a
 // function that does not block, like e.g. NewHost in pipenet case), it can be

@@ -22,13 +22,12 @@
 // usage: `go tool trace -d <trace.out> |gmigrate`
 package main
 
-
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io"
 	"log"
-	"fmt"
 	"os"
 	"regexp"
 	"sort"
@@ -64,19 +63,19 @@ type goStart struct {
 
 // information about a G
 type gInfo struct {
-	g	 int
+	g        int
 	m        int // last time was running on this M
 	nmigrate int // how much times migrated between different Ms
 }
 
 func main() {
-	var pm = map[int]int{}		// p -> m
-	var gg = map[int]*gInfo{}	// g -> (m, #migrate)
+	var pm = map[int]int{}    // p -> m
+	var gg = map[int]*gInfo{} // g -> (m, #migrate)
 
 	in := bufio.NewReader(os.Stdin)
 
 	tstart, tend, tprev := -1, -1, -1
-	for lineno := 1;; lineno++{
+	for lineno := 1; ; lineno++ {
 		bad := func(err error) {
 			log.Fatalf("%d: %v", lineno, err)
 		}
@@ -187,7 +186,7 @@ func parseLineHeader(l string) (t int, event, args string, err error) {
 
 // ex: 9782014 ProcStart p=2 g=0 off=133138 thread=5
 var (
-	pStartArgvRe = regexp.MustCompile("^p=([^ ]+) g=[^ ]+ off=[^ ]+ thread=([^ ]+)$")
+	pStartArgvRe  = regexp.MustCompile("^p=([^ ]+) g=[^ ]+ off=[^ ]+ thread=([^ ]+)$")
 	pStartArgvErr = errors.New("ProcStart: argv invalid")
 )
 
@@ -214,7 +213,7 @@ func parseProcStart(args string) (procStart, error) {
 
 // ex: 9782310 GoStart p=2 g=33 off=133142 g=33 seq=0
 var (
-	gStartArgvRe = regexp.MustCompile("^p=([^ ]+) g=([^ ]+) off=[^ ]+ g=([^ ]+) seq=[^ ]+$")
+	gStartArgvRe  = regexp.MustCompile("^p=([^ ]+) g=([^ ]+) off=[^ ]+ g=([^ ]+) seq=[^ ]+$")
 	gStartArgvErr = errors.New("GoStart: argv invalid")
 )
 

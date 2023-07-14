@@ -19,8 +19,7 @@
 
 // Package xerr provides addons for error-handling.
 //
-//
-// Error context
+// # Error context
 //
 // Context and Contextf are handy to concisely add context to returned error,
 // for example:
@@ -37,8 +36,7 @@
 // returned error.  Please see package github.com/pkg/errors for details on
 // this topic.
 //
-//
-// Error vector
+// # Error vector
 //
 // Sometimes there are several operations performed and we want to collect
 // errors from them all. For this Errorv could be used which is vector of
@@ -82,9 +80,9 @@ type Errorv []error
 
 // Error returns string representation of error vector.
 //
-//	- ""			if len(errv)==0
-//	- errv[0].Error()	if len(errv)==1
-//	- "<n> errors:\n" + string representation of every error on separate line, otherwise.
+//   - ""			if len(errv)==0
+//   - errv[0].Error()	if len(errv)==1
+//   - "<n> errors:\n" + string representation of every error on separate line, otherwise.
 func (errv Errorv) Error() string {
 	switch len(errv) {
 	case 0:
@@ -120,9 +118,9 @@ func (errv *Errorv) Appendf(format string, a ...interface{}) {
 
 // Err returns error in canonical form accumulated in error vector.
 //
-//	- nil      if len(errv)==0
-//	- errv[0]  if len(errv)==1		// XXX is this good idea?
-//	- errv     otherwise
+//   - nil      if len(errv)==0
+//   - errv[0]  if len(errv)==1		// XXX is this good idea?
+//   - errv     otherwise
 func (errv Errorv) Err() error {
 	switch len(errv) {
 	case 0:
@@ -138,9 +136,9 @@ func (errv Errorv) Err() error {
 //
 // it returns:
 //
-//	- nil                         if all errors are nil
-//	- single error                if there is only one non-nil error
-//	- Errorv with non-nil errors  if there is more than one non-nil error
+//   - nil                         if all errors are nil
+//   - single error                if there is only one non-nil error
+//   - Errorv with non-nil errors  if there is more than one non-nil error
 func Merge(errv ...error) error {
 	ev := Errorv{}
 	for _, err := range errv {
@@ -195,7 +193,7 @@ func Context(errp *error, context string) {
 // Contextf is formatted analog of Context. Please see Context for details on how to use.
 func Contextf(errp *error, format string, argv ...interface{}) {
 	if *errp == nil {
-	        return
+		return
 	}
 
 	*errp = errors.WithMessage(*errp, fmt.Sprintf(format, argv...))

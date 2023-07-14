@@ -182,14 +182,14 @@ func (b *Buffer) Xs(x string) *Buffer {
 
 // AppendHex016 appends to b x formatted 16-character hex string.
 func AppendHex016(b []byte, x uint64) []byte {
-        // like sprintf("%016x") but faster and less allocations
+	// like sprintf("%016x") but faster and less allocations
 	l := len(b)
-        b = xbytes.Grow(b, 16)
+	b = xbytes.Grow(b, 16)
 	bb := b[l:]
-        for i := 15; i >= 0; i-- {
-                bb[i] = hexdigits[x & 0xf]
-                x >>= 4
-        }
+	for i := 15; i >= 0; i-- {
+		bb[i] = hexdigits[x&0xf]
+		x >>= 4
+	}
 	return b
 }
 

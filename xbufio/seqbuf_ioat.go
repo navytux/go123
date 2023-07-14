@@ -22,7 +22,6 @@ package xbufio
 
 import (
 	"io"
-
 	//"log"
 )
 
@@ -31,17 +30,18 @@ import (
 // Both forward, backward and interleaved forward/backward access patterns are supported
 //
 // NOTE SeqReaderAt is not safe to use from multiple goroutines concurrently.
+//
 //	Strictly speaking this goes against io.ReaderAt interface but sequential
-// 	workloads usually mean sequential processing. It would be a pity to
-// 	add mutex for nothing.
+//	workloads usually mean sequential processing. It would be a pity to
+//	add mutex for nothing.
 type SeqReaderAt struct {
 	// buffer for data at pos. cap(buf) - whole buffer capacity
-	buf	[]byte
-	pos	int64
+	buf []byte
+	pos int64
 
-	posLastAccess	int64 // position of last access request
-	posLastFwdAfter	int64 // position of last forward access request
-	posLastBackward	int64 // position of last backward access request
+	posLastAccess   int64 // position of last access request
+	posLastFwdAfter int64 // position of last forward access request
+	posLastBackward int64 // position of last backward access request
 
 	r io.ReaderAt
 

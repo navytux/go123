@@ -19,19 +19,19 @@
 
 // Package xio provides addons to standard package io.
 //
-//	- Reader, Writer, ReadWriter, etc are io analogs that add support for contexts.
-//	- BindCtx*(X, ctx) converts xio.X into io.X that implicitly passes ctx
-//	  to xio.X and can be used in legacy code.
-//	- WithCtx*(X) converts io.X back into xio.X that accepts context.
-//	  It is the opposite operation for BindCtx, but for arbitrary io.X
-//	  returned xio.X handles context only on best-effort basis. In
-//	  particular IO cancellation is not reliably handled for os.File .
-//	- Pipe amends io.Pipe and creates synchronous in-memory pipe that
-//	  supports IO cancellation.
+//   - Reader, Writer, ReadWriter, etc are io analogs that add support for contexts.
+//   - BindCtx*(X, ctx) converts xio.X into io.X that implicitly passes ctx
+//     to xio.X and can be used in legacy code.
+//   - WithCtx*(X) converts io.X back into xio.X that accepts context.
+//     It is the opposite operation for BindCtx, but for arbitrary io.X
+//     returned xio.X handles context only on best-effort basis. In
+//     particular IO cancellation is not reliably handled for os.File .
+//   - Pipe amends io.Pipe and creates synchronous in-memory pipe that
+//     supports IO cancellation.
 //
 // Miscellaneous utilities:
 //
-//	- CountReader provides InputOffset for a Reader.
+//   - CountReader provides InputOffset for a Reader.
 package xio
 
 import (

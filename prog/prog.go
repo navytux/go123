@@ -35,10 +35,10 @@ import (
 
 // Command describes one program subcommand.
 type Command struct {
-	Name	string
-	Summary	string
-	Usage	func (w io.Writer)
-	Main	func (argv []string)
+	Name    string
+	Summary string
+	Usage   func(w io.Writer)
+	Main    func(argv []string)
 }
 
 // CommandRegistry is ordered collection of Commands.
@@ -78,10 +78,10 @@ func (helpv HelpRegistry) Lookup(topic string) *HelpTopic {
 
 // MainProg defines a program to run with subcommands and help topics.
 type MainProg struct {
-	Name       string		// name of the program, e.g. "zodb"
-	Summary    string		// 1-line summary of what program does
-	Commands   CommandRegistry	// provided subcommands
-	HelpTopics HelpRegistry		// provided help topics
+	Name       string          // name of the program, e.g. "zodb"
+	Summary    string          // 1-line summary of what program does
+	Commands   CommandRegistry // provided subcommands
+	HelpTopics HelpRegistry    // provided help topics
 }
 
 // Exit is like os.Exit but makes sure deferred functions are run.

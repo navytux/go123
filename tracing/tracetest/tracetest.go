@@ -33,16 +33,16 @@
 // Verification of events for all streams can be done by one *sequential*
 // process:
 //
-//	- if events A and B in different streams are unrelated to each other by
-// 	  causality, the sequence of checks models a particular possible flow of
-// 	  time. Notably since events are delivered synchronously and sender is
-// 	  blocked until receiver/checker explicitly confirms event has been
-// 	  processed, by checking either A then B, or B then A allows to check
-// 	  for a particular race-condition.
+//   - if events A and B in different streams are unrelated to each other by
+//     causality, the sequence of checks models a particular possible flow of
+//     time. Notably since events are delivered synchronously and sender is
+//     blocked until receiver/checker explicitly confirms event has been
+//     processed, by checking either A then B, or B then A allows to check
+//     for a particular race-condition.
 //
-// 	- if events A and B in different streams are related to each other by
-// 	  causality (i.e. there is some happens-before relation for them) the
-// 	  sequence of checking should represent that ordering relation.
+//   - if events A and B in different streams are related to each other by
+//     causality (i.e. there is some happens-before relation for them) the
+//     sequence of checking should represent that ordering relation.
 //
 // Basic package usage is as follows:
 //
@@ -104,12 +104,12 @@ package tracetest
 import (
 	"fmt"
 	"path/filepath"
-	"sort"
-	"strings"
-	"sync"
 	"reflect"
 	"runtime"
 	"runtime/debug"
+	"sort"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 

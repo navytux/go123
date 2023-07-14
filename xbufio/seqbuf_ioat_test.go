@@ -232,7 +232,7 @@ func TestSeqReaderAt(t *testing.T) {
 		}
 
 		// verify buffer state
-		if !(rb.pos == tt.bufPos && len(rb.buf) == tt.bufLen){
+		if !(rb.pos == tt.bufPos && len(rb.buf) == tt.bufLen) {
 			t.Fatalf("%v: -> unexpected buffer state @%v #%v", tt, rb.pos, len(rb.buf))
 		}
 	}
