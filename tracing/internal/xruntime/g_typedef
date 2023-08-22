@@ -77,6 +77,11 @@ typedef_g() {
 	if (( $govern >= 119 )); then
 		typedef runtime.goroutineProfileStateHolder
 	fi
+
+	if (( $govern >= 121 )); then
+		typedef runtime.gTraceState
+		typedef runtime.traceTime
+	fi
 }
 
 # typedef_g_fixed - print adjusted <g> & friends definitions
@@ -121,7 +126,7 @@ gen_zruntime() {
 
 
 # main driver
-gov="go18 go19 go1.10 go1.11 go1.12 go1.13 go1.14 go1.15 go1.16 go1.17 go1.18 go1.19 go1.20"
+gov="go18 go19 go1.10 go1.11 go1.12 go1.13 go1.14 go1.15 go1.16 go1.17 go1.18 go1.19 go1.20 go1.21"
 
 for g in $gov; do
 	goset $g
