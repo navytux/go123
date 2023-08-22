@@ -17,22 +17,24 @@
 // See COPYING file for full licensing terms.
 // See https://www.nexedi.com/licensing for rationale and options.
 
-package xruntime
-// stop-the-world that should probably be in public xruntime, but I'm (yet)
-// hesitating to expose the API to public.
+//go:build !go1.21
+// +build !go1.21
 
-// StopTheWorld returns with the world stopped.
-//
-// Current goroutine remains the only one who is running, with others
-// goroutines stopped at safe GC points.
-// It requires careful programming as many things that normally work lead to
-// fatal errors when the world is stopped - for example using timers would be
-// invalid, but adjusting plain values in memory is ok.
-func StopTheWorld(reason string) {
-	stopTheWorld(reason)
+package xruntime
+
+import _ "unsafe"
+
+//go:linkname runtime_stopTheWorld runtime.stopTheWorld
+//go:linkname runtime_startTheWorld runtime.startTheWorld
+
+func runtime_stopTheWorld(reason string)
+func runtime_startTheWorld()
+
+
+func stopTheWorld(reason string) {
+	runtime_stopTheWorld(reason)
 }
 
-// StartTheWorld restarts the world after it was stopped by StopTheWorld.
-func StartTheWorld() {
-	startTheWorld()
+func startTheWorld() {
+	runtime_startTheWorld()
 }
