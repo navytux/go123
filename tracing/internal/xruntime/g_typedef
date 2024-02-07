@@ -1,7 +1,7 @@
 #!/bin/bash
 # g_typedef -- generate type definition of runtime.g
 #
-# Copyright (C) 2017-2023  Nexedi SA and Contributors.
+# Copyright (C) 2017-2024  Nexedi SA and Contributors.
 #                          Kirill Smelkov <kirr@nexedi.com>
 #
 # This program is free software: you can Use, Study, Modify and Redistribute
@@ -82,6 +82,11 @@ typedef_g() {
 		typedef runtime.gTraceState
 		typedef runtime.traceTime
 	fi
+
+	if (( $govern >= 122 )); then
+		typedef runtime.coro
+		typedef runtime.traceSchedResourceState
+	fi
 }
 
 # typedef_g_fixed - print adjusted <g> & friends definitions
@@ -126,7 +131,7 @@ gen_zruntime() {
 
 
 # main driver
-gov="go18 go19 go1.10 go1.11 go1.12 go1.13 go1.14 go1.15 go1.16 go1.17 go1.18 go1.19 go1.20 go1.21"
+gov="go18 go19 go1.10 go1.11 go1.12 go1.13 go1.14 go1.15 go1.16 go1.17 go1.18 go1.19 go1.20 go1.21 go1.22"
 
 for g in $gov; do
 	goset $g
