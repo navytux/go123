@@ -87,12 +87,19 @@ typedef_g() {
 		typedef runtime.coro
 		typedef runtime.traceSchedResourceState
 	fi
+
+	if (( $govern >= 123 )); then
+		typedef runtime.mutex
+		typedef runtime.lockRankStruct
+	fi
 }
 
 # typedef_g_fixed - print adjusted <g> & friends definitions
 typedef_g_fixed() {
 	typedef_g $1 | \
-		sed -e 's/\<sys.Uintreg\>/uintreg/'
+		sed -e 's/\<sys.Uintreg\>/uintreg/;
+			# there is no sync/atomic.Uint8
+			s/\<atomic.Uint8\>/uint8/'
 
 	echo "type uintreg  uint	// FIXME wrong on amd64p32"
 	echo "type m struct {}		// FIXME stub"
@@ -100,6 +107,10 @@ typedef_g_fixed() {
 
 	if (( $govern >= 110 )); then
 		echo "type timersBucket struct {}	// FIXME stub"
+	fi
+
+	if (( $govern >= 123 )); then
+		echo "type timers struct {}	// FIXME stub"
 	fi
 }
 
@@ -131,7 +142,7 @@ gen_zruntime() {
 
 
 # main driver
-gov="go18 go19 go1.10 go1.11 go1.12 go1.13 go1.14 go1.15 go1.16 go1.17 go1.18 go1.19 go1.20 go1.21 go1.22"
+gov="go18 go19 go1.10 go1.11 go1.12 go1.13 go1.14 go1.15 go1.16 go1.17 go1.18 go1.19 go1.20 go1.21 go1.22 go1.23"
 
 for g in $gov; do
 	goset $g
