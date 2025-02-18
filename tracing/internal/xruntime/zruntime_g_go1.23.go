@@ -187,9 +187,10 @@ type timer struct {
 	// mu protects reads and writes to all fields, with exceptions noted below.
 	mu mutex
 
-	astate  uint8  // atomic copy of state bits at last unlock
-	state   uint8  // state bits
-	isChan  bool   // timer has a channel; immutable; can be read without lock
+	astate uint8 // atomic copy of state bits at last unlock
+	state  uint8 // state bits
+	isChan bool  // timer has a channel; immutable; can be read without lock
+
 	blocked uint32 // number of goroutines blocked on timer's channel
 
 	// Timer wakes up at when, and then at when+period, ... (period > 0 only)
@@ -229,6 +230,20 @@ type timer struct {
 	// sendLock protects sends on the timer's channel.
 	// Not used for async (pre-Go 1.23) behavior when debug.asynctimerchan.Load() != 0.
 	sendLock mutex
+
+	// isSending is used to handle races between running a
+	// channel timer and stopping or resetting the timer.
+	// It is used only for channel timers (t.isChan == true).
+	// It is not used for tickers.
+	// The value is incremented when about to send a value on the channel,
+	// and decremented after sending the value.
+	// The stop/reset code uses this to detect whether it
+	// stopped the channel send.
+	//
+	// isSending is incremented only when t.mu is held.
+	// isSending is decremented only when t.sendLock is held.
+	// isSending is read only when both t.mu and t.sendLock are held.
+	isSending atomic.Int32
 }
 type guintptr uintptr
 type puintptr uintptr
