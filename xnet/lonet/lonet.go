@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020  Nexedi SA and Contributors.
+// Copyright (C) 2018-2025  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -341,7 +341,7 @@ func (n *subNetwork) _loaccept(ctx context.Context, osconn net.Conn) error {
 	//
 	// error from osconn.Write is ignored.
 	eproto := func(ereason, detailf string, argv ...interface{}) error {
-		ereply(protocolErrorf(ereason))
+		ereply(protocolErrorf("%s", ereason))
 		return protocolErrorf(ereason + ": " + detailf, argv...)
 	}
 
