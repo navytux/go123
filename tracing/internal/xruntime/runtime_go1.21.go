@@ -17,8 +17,8 @@
 // See COPYING file for full licensing terms.
 // See https://www.nexedi.com/licensing for rationale and options.
 
-//go:build go1.21
-// +build go1.21
+//go:build go1.21 && !go1.23
+// +build go1.21,!go1.23
 
 package xruntime
 
