@@ -1,5 +1,5 @@
-// Copyright (C) 2017  Nexedi SA and Contributors.
-//                     Kirill Smelkov <kirr@nexedi.com>
+// Copyright (C) 2017-2025  Nexedi SA and Contributors.
+//                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
 // it under the terms of the GNU General Public License version 3, or (at your
@@ -55,16 +55,16 @@ func TestAttachDetach(t *testing.T) {
 
 	// attach probe to traceX
 	attachX := func(probe *Probe) {
-		Lock()
-		AttachProbe(nil, &traceX, probe)
-		Unlock()
+		Setup(func() {
+			AttachProbe(nil, &traceX, probe)
+		})
 	}
 
 	// detach probe
 	detach := func(probe *Probe) {
-		Lock()
-		probe.Detach()
-		Unlock()
+		Setup(func() {
+			probe.Detach()
+		})
 	}
 
 	p1 := &Probe{}
@@ -106,9 +106,9 @@ func TestUseDetach(t *testing.T) {
 
 	// attach probe to traceX
 	probe := Probe{}
-	Lock()
-	AttachProbe(nil, &traceX, &probe)
-	Unlock()
+	Setup(func() {
+		AttachProbe(nil, &traceX, &probe)
+	})
 
 	// simulate traceX signalling and so probe usage and concurrent probe detach
 	go func() {
@@ -116,9 +116,9 @@ func TestUseDetach(t *testing.T) {
 		// with non-empty probe list
 		time.Sleep(1 * time.Millisecond)
 
-		Lock()
-		probe.Detach()
-		Unlock()
+		Setup(func() {
+			probe.Detach()
+		})
 	}()
 
 loop:
@@ -139,7 +139,7 @@ loop:
 		}
 
 		// XXX as of go19 tight loops are not preemptible (golang.org/issues/10958)
-		//     and Lock does stop-the-world -> make this loop explicitly preemtible.
+		//     and Setup does stop-the-world -> make this loop explicitly preemtible.
 		runtime.Gosched()
 	}
 }

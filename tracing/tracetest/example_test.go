@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2021  Nexedi SA and Contributors.
+// Copyright (C) 2018-2025  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -57,14 +57,14 @@ type eventHi string
 type eventHello string
 func setupTracing(t *tracetest.T) *tracing.ProbeGroup {
 	pg := &tracing.ProbeGroup{}
-	tracing.Lock()
-	traceHi_Attach(pg, func(who string) {
-		t.RxEvent(eventHi(who))
+	tracing.Setup(func() {
+		traceHi_Attach(pg, func(who string) {
+			t.RxEvent(eventHi(who))
+		})
+		traceHello_Attach(pg, func(who string) {
+			t.RxEvent(eventHello(who))
+		})
 	})
-	traceHello_Attach(pg, func(who string) {
-		t.RxEvent(eventHello(who))
-	})
-	tracing.Unlock()
 	// NOTE pg.Done must be invoked by caller when setup tracing is no longer needed.
 	return pg
 }

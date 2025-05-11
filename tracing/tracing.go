@@ -1,4 +1,4 @@
-// Copyright (C) 2017-2021  Nexedi SA and Contributors.
+// Copyright (C) 2017-2025  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -47,7 +47,7 @@ attached, is called whenever event is signalled in the context which triggered
 the event and pauses original code execution until the probe is finished. It is
 possible to attach several probing functions to the same event and dynamically
 detach/(re-)attach them at runtime. Attaching/detaching probes must be done
-under tracing.Lock. For example:
+via tracing.Setup . For example:
 
 	type saidHelloT struct {
 		who  string
@@ -55,11 +55,12 @@ under tracing.Lock. For example:
 	}
 	saidHello := make(chan saidHelloT)
 
-	tracing.Lock()
-	p := traceHello_Attach(nil, func(who string) {
-		saidHello <- saidHelloT{who, time.Now()}
+	var p *tracing.Probe
+	tracing.Setup(func() {
+		p = traceHello_Attach(nil, func(who string) {
+			saidHello <- saidHelloT{who, time.Now()}
+		})
 	})
-	tracing.Unlock()
 
 	go func() {
 		for hello := range saidHello {
@@ -71,9 +72,9 @@ under tracing.Lock. For example:
 	SayHello("Kirr")
 	SayHello("Varya")
 
-	tracing.Lock()
-	p.Detach()
-	tracing.Unlock()
+	tracing.Setup(func() {
+		p.Detach()
+	})
 
 	close(saidHello)
 
@@ -82,14 +83,14 @@ all at once using ProbeGroup:
 
 	pg := &tracing.ProbeGroup{}
 
-	tracing.Lock()
-	traceHelloPre_Attach(pg, func(who string) { ... })
-	traceHello_Attach(pg, func(who string) { ... })
-	tracing.Unlock()
+	tracing.Setup(func() {
+		traceHelloPre_Attach(pg, func(who string) { ... })
+		traceHello_Attach(pg, func(who string) { ... })
+	})
 
 	// some activity
 
-	// when probes needs to be detached (no explicit tracing.Lock needed):
+	// when probes needs to be detached (no explicit tracing.Setup needed):
 	pg.Done()
 
 Probes is general mechanism which allows various kinds of trace events usage.
@@ -163,11 +164,11 @@ to get access to trace events another package provides:
 This will make _Attach functions for all tracing events from package hello be
 available as regular functions prefixed with imported package name:
 
-	tracing.Lock()
-	hello_traceHello_Attach(nil, func(who string) {
-		fmt.Printf("SayHello in package hello: %s", who)
+	tracing.Setup(func() {
+		hello_traceHello_Attach(nil, func(who string) {
+			fmt.Printf("SayHello in package hello: %s", who)
+		})
 	})
-	tracing.Unlock()
 
 	...
 
@@ -206,30 +207,30 @@ import (
 
 // big tracing lock
 var traceMu     sync.Mutex
-var traceLocked int32      // for cheap protective checks whether Lock is held
+var traceLocked int32      // for cheap protective checks whether we are running under Setup
 
-// Lock serializes modification access to tracepoints.
+// Setup runs f under conditions when it is safe to attach/detach probes.
 //
-// Under Lock it is safe to attach/detach probes to/from tracepoints:
-// - no other goroutine is attaching or detaching probes from tracepoints,
-// - a tracepoint readers won't be neither confused nor raced by such adjustments.
+// When Setup runs f it is safe to attach/detach probes to/from tracepoints:
 //
-// Lock returns with the world stopped.
-func Lock() {
+//   - no other goroutine is attaching or detaching probes from tracepoints,
+//   - a tracepoint readers won't be neither confused nor raced by such adjustments.
+//
+// f is ran with the world stopped.
+func Setup(f func()) {
 	traceMu.Lock()
+	defer traceMu.Unlock()
+
 	xruntime.StopTheWorld("tracing lock")
+	defer xruntime.StartTheWorld()
 	atomic.StoreInt32(&traceLocked, 1)
+	defer atomic.StoreInt32(&traceLocked, 0)
 	// we synchronized with everyone via stopping the world - there is now
 	// no other goroutines running to race with.
 	xruntime.RaceIgnoreBegin()
-}
+	defer xruntime.RaceIgnoreEnd()
 
-// Unlock is the opposite to Lock and returns with the world resumed.
-func Unlock() {
-	xruntime.RaceIgnoreEnd()
-	atomic.StoreInt32(&traceLocked, 0)
-	xruntime.StartTheWorld()
-	traceMu.Unlock()
+	f()
 }
 
 // verifyLocked makes sure tracing is locked and panics otherwise.
@@ -267,7 +268,7 @@ func (p *Probe) Next() *Probe {
 // AttachProbe attaches newly created Probe to the end of a probe list.
 //
 // If group is non-nil the probe is also added to the group.
-// Must be called under Lock.
+// Must be called under Setup.
 // Probe must be newly created.
 func AttachProbe(pg *ProbeGroup, listp **Probe, probe *Probe) {
 	verifyLocked()
@@ -290,7 +291,7 @@ func AttachProbe(pg *ProbeGroup, listp **Probe, probe *Probe) {
 
 // Detach detaches probe from a tracepoint.
 //
-// Must be called under Lock.
+// Must be called under Setup.
 func (p *Probe) Detach() {
 	verifyLocked()
 
@@ -307,7 +308,7 @@ func (p *Probe) Detach() {
 
 	// we can safely change next.prev pointer:
 	// - readers only go through list forward
-	// - there is no other updater because we are under Lock
+	// - there is no other updater because we are under Setup
 	if p.next != nil {
 		p.next.prev = p.prev
 	}
@@ -325,7 +326,7 @@ type ProbeGroup struct {
 
 // Add adds a probe to the group.
 //
-// Must be called under Lock.
+// Must be called under Setup.
 func (pg *ProbeGroup) Add(p *Probe) {
 	verifyLocked()
 	pg.probev = append(pg.probev, p)
@@ -333,14 +334,13 @@ func (pg *ProbeGroup) Add(p *Probe) {
 
 // Done detaches all probes registered to the group.
 //
-// Must be called under normal conditions, not under Lock.
+// Must be called under normal conditions, not under Setup.
 func (pg *ProbeGroup) Done() {
 	verifyUnlocked()
-	Lock()
-	defer Unlock()
-
-	for _, p := range pg.probev {
-		p.Detach()
-	}
-	pg.probev = nil
+	Setup(func() {
+		for _, p := range pg.probev {
+			p.Detach()
+		}
+		pg.probev = nil
+	})
 }
