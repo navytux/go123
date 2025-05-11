@@ -221,16 +221,16 @@ func Setup(f func()) {
 	traceMu.Lock()
 	defer traceMu.Unlock()
 
-	xruntime.StopTheWorld("tracing lock")
-	defer xruntime.StartTheWorld()
-	atomic.StoreInt32(&traceLocked, 1)
-	defer atomic.StoreInt32(&traceLocked, 0)
-	// we synchronized with everyone via stopping the world - there is now
-	// no other goroutines running to race with.
-	xruntime.RaceIgnoreBegin()
-	defer xruntime.RaceIgnoreEnd()
+	xruntime.DoWithStoppedWorld(func() {
+		atomic.StoreInt32(&traceLocked, 1)
+		defer atomic.StoreInt32(&traceLocked, 0)
+		// we synchronized with everyone via stopping the world - there is now
+		// no other goroutines running to race with.
+		xruntime.RaceIgnoreBegin()
+		defer xruntime.RaceIgnoreEnd()
 
-	f()
+		f()
+	})
 }
 
 // verifyLocked makes sure tracing is locked and panics otherwise.

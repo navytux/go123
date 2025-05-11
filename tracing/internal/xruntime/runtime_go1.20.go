@@ -1,4 +1,4 @@
-// Copyright (C) 2016-2023  Nexedi SA and Contributors.
+// Copyright (C) 2016-2025  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -30,11 +30,8 @@ import _ "unsafe"
 func runtime_stopTheWorld(reason string)
 func runtime_startTheWorld()
 
-
-func stopTheWorld(reason string) {
-	runtime_stopTheWorld(reason)
-}
-
-func startTheWorld() {
-	runtime_startTheWorld()
+func doWithStoppedWorld(f func()) {
+	runtime_stopTheWorld("xruntime.DoWithStoppedWorld")
+	defer runtime_startTheWorld()
+	f()
 }

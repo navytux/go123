@@ -1,4 +1,4 @@
-// Copyright (C) 2016-2023  Nexedi SA and Contributors.
+// Copyright (C) 2016-2025  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -33,10 +33,8 @@ func runtime_stopTheWorld(reason stwReason)
 func runtime_startTheWorld()
 
 
-func stopTheWorld(reason string) {
+func doWithStoppedWorld(f func()) {
 	runtime_stopTheWorld(0) // cannot express arbitrary string reason as code; stop with "unknown"
-}
-
-func startTheWorld() {
-	runtime_startTheWorld()
+	defer runtime_startTheWorld()
+	f()
 }
