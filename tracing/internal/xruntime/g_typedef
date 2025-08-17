@@ -116,6 +116,10 @@ typedef_g_fixed() {
 	if (( $govern >= 124 )); then
 		echo "type synctestGroup struct {}	// FIXME stub"
 	fi
+
+	if (( $govern >= 125 )); then
+		echo "type synctestBubble struct {}	// FIXME stub"
+	fi
 }
 
 
@@ -146,7 +150,7 @@ gen_zruntime() {
 
 
 # main driver
-gov="go18 go19 go1.10 go1.11 go1.12 go1.13 go1.14 go1.15 go1.16 go1.17 go1.18 go1.19 go1.20 go1.21 go1.22 go1.23 go1.24"
+gov="go18 go19 go1.10 go1.11 go1.12 go1.13 go1.14 go1.15 go1.16 go1.17 go1.18 go1.19 go1.20 go1.21 go1.22 go1.23 go1.24 go1.25"
 
 for g in $gov; do
 	goset $g
