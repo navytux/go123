@@ -27,8 +27,6 @@ import (
 )
 
 func TestGetG(t *testing.T) {
-	t.Log("XFAIL: currently fails wrt g.startpc")
-
 	// verify that getg returns reasonable result by checking g.goid and g.startpc
 	n := 1000
 	for i := 0; i < n; i++ {

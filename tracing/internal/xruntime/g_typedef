@@ -37,16 +37,29 @@ goset() {
 
 # typedef <type> - print type definition
 typedef() {
+	pkgtyp=$(basename $1)	# internal/runtime/atomic.Bool -> atomic.Bool
+	pkg=${pkgtyp%.*}	# atomic.Bool -> atomic
+	typ=${pkgtyp#*.}	# atomic.Bool -> Bool
 	$goexec doc -c -u $1 |sed -n -e '
 # ignore anything not starting with `type `
 /^type /!b
 
+# if there is closing } on that same line just print this line, e.g.
+# type X struct {x int}
+/}/{p; b}
+
 # if there is opening `{` - loop till closing `}`
 /{/{:loop p; n; /^}/!b loop; p; b}
 
-# else just print this single line
+# else just print this single line, e.g.
+# type X int
 p
-'
+'	|
+	if [ $pkg = runtime ]; then
+		cat
+	else
+		sed -e "s/\\<$typ\\>/${pkg}_${typ}/"
+	fi
 }
 
 # typedef_g 	- print <g> & friends definitions
@@ -78,6 +91,18 @@ typedef_g() {
 		typedef runtime.goroutineProfileStateHolder
 	fi
 
+	if (( $govern >= 120 )); then
+		if (( $govern < 123 )); then
+			typedef runtime/internal/atomic.noCopy
+			typedef runtime/internal/atomic.Uint8
+			typedef runtime/internal/atomic.Bool
+		else
+			typedef internal/runtime/atomic.noCopy
+			typedef internal/runtime/atomic.Uint8
+			typedef internal/runtime/atomic.Bool
+		fi
+	fi
+
 	if (( $govern >= 121 )); then
 		typedef runtime.gTraceState
 		typedef runtime.traceTime
@@ -102,8 +127,13 @@ typedef_g() {
 typedef_g_fixed() {
 	typedef_g $1 | \
 		sed -e 's/\<sys.Uintreg\>/uintreg/;
+			s/\<noCopy\>/atomic_noCopy/g;
 			# there is no sync/atomic.Uint8
-			s/\<atomic.Uint8\>/uint8/'
+			s/\<atomic.Uint8\>/atomic_Uint8/g;
+			s/\<Uint8\>/atomic_Uint8/g;
+			# sync/atomic.Bool is uint32 while internal/runtime/atomic.Bool is uint8
+			s/\<atomic.Bool\>/atomic_Bool/g;
+			'
 
 	echo "type uintreg  uint	// FIXME wrong on amd64p32"
 	echo "type m struct {}		// FIXME stub"

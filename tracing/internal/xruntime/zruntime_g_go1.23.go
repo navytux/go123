@@ -69,7 +69,7 @@ type g struct {
 	// parkingOnChan indicates that the goroutine is about to
 	// park on a chansend or chanrecv. Used to signal an unsafe point
 	// for stack shrinking.
-	parkingOnChan atomic.Bool
+	parkingOnChan atomic_Bool
 	// inMarkAssist indicates whether the goroutine is in mark assist.
 	// Used by the execution tracer.
 	inMarkAssist bool
@@ -187,9 +187,9 @@ type timer struct {
 	// mu protects reads and writes to all fields, with exceptions noted below.
 	mu mutex
 
-	astate uint8 // atomic copy of state bits at last unlock
-	state  uint8 // state bits
-	isChan bool  // timer has a channel; immutable; can be read without lock
+	astate atomic_Uint8 // atomic copy of state bits at last unlock
+	state  uint8        // state bits
+	isChan bool         // timer has a channel; immutable; can be read without lock
 
 	blocked uint32 // number of goroutines blocked on timer's channel
 
@@ -255,6 +255,15 @@ type ancestorInfo struct {
 	gopc uintptr   // pc of go statement that created this goroutine
 }
 type goroutineProfileStateHolder atomic.Uint32
+type atomic_noCopy struct{}
+type atomic_Uint8 struct {
+	atomic_noCopy atomic_noCopy
+	value         uint8
+}
+type atomic_Bool struct {
+	// Inherits atomic_noCopy from atomic_Uint8.
+	u atomic_Uint8
+}
 type gTraceState struct {
 	traceSchedResourceState
 }

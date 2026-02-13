@@ -66,7 +66,7 @@ type g struct {
 	// parkingOnChan indicates that the goroutine is about to
 	// park on a chansend or chanrecv. Used to signal an unsafe point
 	// for stack shrinking.
-	parkingOnChan atomic.Bool
+	parkingOnChan atomic_Bool
 
 	raceignore    int8  // ignore race detection events
 	tracking      bool  // whether we're tracking this G for sched latency statistics
@@ -202,6 +202,15 @@ type ancestorInfo struct {
 	gopc uintptr   // pc of go statement that created this goroutine
 }
 type goroutineProfileStateHolder atomic.Uint32
+type atomic_noCopy struct{}
+type atomic_Uint8 struct {
+	atomic_noCopy atomic_noCopy
+	value         uint8
+}
+type atomic_Bool struct {
+	// Inherits atomic_noCopy from atomic_Uint8.
+	u atomic_Uint8
+}
 type gTraceState struct {
 	sysExitTime        traceTime // timestamp when syscall has returned
 	tracedSyscallEnter bool      // syscall or cgo was entered while trace was enabled or StartTrace has emitted EvGoInSyscall about this goroutine
