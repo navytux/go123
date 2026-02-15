@@ -206,8 +206,8 @@ import (
 )
 
 // big tracing lock
-var traceMu     sync.Mutex
-var traceLocked int32      // for cheap protective checks whether we are running under Setup
+var traceMu    sync.Mutex
+var traceSetup int32      // for cheap protective checks whether we are running under Setup
 
 // Setup runs f under conditions when it is safe to attach/detach probes.
 //
@@ -222,8 +222,8 @@ func Setup(f func()) {
 	defer traceMu.Unlock()
 
 	xruntime.DoWithStoppedWorld(func() {
-		atomic.StoreInt32(&traceLocked, 1)
-		defer atomic.StoreInt32(&traceLocked, 0)
+		atomic.StoreInt32(&traceSetup, 1)
+		defer atomic.StoreInt32(&traceSetup, 0)
 		// we synchronized with everyone via stopping the world - there is now
 		// no other goroutines running to race with.
 		xruntime.RaceIgnoreBegin()
@@ -233,17 +233,17 @@ func Setup(f func()) {
 	})
 }
 
-// verifyLocked makes sure tracing is locked and panics otherwise.
-func verifyLocked() {
-	if atomic.LoadInt32(&traceLocked) == 0 {
-		panic("tracing must be locked")
+// verifySetup makes sure tracing is running under Setup and panics otherwise.
+func verifySetup() {
+	if atomic.LoadInt32(&traceSetup) == 0 {
+		panic("must be run under tracing.Setup")
 	}
 }
 
-// verifyUnlocked makes sure tracing is not locked and panics otherwise.
-func verifyUnlocked() {
-	if atomic.LoadInt32(&traceLocked) != 0 {
-		panic("tracing must be unlocked")
+// verifyNoSetup makes sure tracing.Setup is not running and panics otherwise.
+func verifyNoSetup() {
+	if atomic.LoadInt32(&traceSetup) != 0 {
+		panic("must be run outside of tracing.Setup")
 	}
 }
 
@@ -271,7 +271,7 @@ func (p *Probe) Next() *Probe {
 // Must be called under [Setup].
 // Probe must be newly created.
 func AttachProbe(pg *ProbeGroup, listp **Probe, probe *Probe) {
-	verifyLocked()
+	verifySetup()
 
 	if !(probe.prev == nil || probe.next == nil) {
 		panic("attach probe: probe is not newly created")
@@ -293,7 +293,7 @@ func AttachProbe(pg *ProbeGroup, listp **Probe, probe *Probe) {
 //
 // Must be called under [Setup].
 func (p *Probe) Detach() {
-	verifyLocked()
+	verifySetup()
 
 	// protection: already detached
 	if p.prev == nil {
@@ -328,7 +328,7 @@ type ProbeGroup struct {
 //
 // Must be called under Setup.
 func (pg *ProbeGroup) Add(p *Probe) {
-	verifyLocked()
+	verifySetup()
 	pg.probev = append(pg.probev, p)
 }
 
@@ -336,7 +336,7 @@ func (pg *ProbeGroup) Add(p *Probe) {
 //
 // Must be called under normal conditions, not under [Setup].
 func (pg *ProbeGroup) Done() {
-	verifyUnlocked()
+	verifyNoSetup()
 	Setup(func() {
 		for _, p := range pg.probev {
 			p.Detach()
