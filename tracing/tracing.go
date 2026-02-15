@@ -1,4 +1,4 @@
-// Copyright (C) 2017-2025  Nexedi SA and Contributors.
+// Copyright (C) 2017-2026  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -47,7 +47,7 @@ attached, is called whenever event is signalled in the context which triggered
 the event and pauses original code execution until the probe is finished. It is
 possible to attach several probing functions to the same event and dynamically
 detach/(re-)attach them at runtime. Attaching/detaching probes must be done
-via tracing.Setup . For example:
+via [tracing.Setup] . For example:
 
 	type saidHelloT struct {
 		who  string
@@ -79,7 +79,7 @@ via tracing.Setup . For example:
 	close(saidHello)
 
 For convenience it is possible to keep group of attached probes and detach them
-all at once using ProbeGroup:
+all at once using [ProbeGroup]:
 
 	pg := &tracing.ProbeGroup{}
 
@@ -121,11 +121,11 @@ NOTE there is also talk/work to implement user events for runtime/trace: https:/
 # Profiling
 
 A profile is aggregate summary of collection of stack traces showing the call sequences that led
-to instances of a particular event. One could create runtime/pprof.Profile and
+to instances of a particular event. One could create [runtime/pprof.Profile] and
 use Profile.Add in a probe attached to particular trace event. The profile can
 be later analyzed and visualised with Profile.WriteTo and `go tool pprof`.
 
-Please refer to runtime/pprof package documentation for details.
+Please refer to [runtime/pprof] package documentation for details.
 
 XXX Profile.Add needs unique value for each invocation - how do we do? Provide NaN every time?
 
@@ -147,7 +147,7 @@ a set of goroutines in tested code in question
   - produce events in correct order, and
   - at every event associated internal state is correct.
 
-Please see package lab.nexedi.com/kirr/go123/tracing/tracetest for details.
+Please see package [lab.nexedi.com/kirr/go123/tracing/tracetest] for details.
 
 
 # Cross package tracing
@@ -189,7 +189,7 @@ usually with the help of //go:generate. For example:
 Besides `gotrace gen` gotrace has other subcommands also related to tracing,
 for example `gotrace list` lists trace events a package provides.
 
-Please see `gotrace help` and lab.nexedi.com/kirr/go123/tracing/cmd/gotrace for gotrace documentation.
+Please see `gotrace help` and [lab.nexedi.com/kirr/go123/tracing/cmd/gotrace] for gotrace documentation.
 
 --------
 
@@ -268,7 +268,7 @@ func (p *Probe) Next() *Probe {
 // AttachProbe attaches newly created Probe to the end of a probe list.
 //
 // If group is non-nil the probe is also added to the group.
-// Must be called under Setup.
+// Must be called under [Setup].
 // Probe must be newly created.
 func AttachProbe(pg *ProbeGroup, listp **Probe, probe *Probe) {
 	verifyLocked()
@@ -291,7 +291,7 @@ func AttachProbe(pg *ProbeGroup, listp **Probe, probe *Probe) {
 
 // Detach detaches probe from a tracepoint.
 //
-// Must be called under Setup.
+// Must be called under [Setup].
 func (p *Probe) Detach() {
 	verifyLocked()
 
@@ -334,7 +334,7 @@ func (pg *ProbeGroup) Add(p *Probe) {
 
 // Done detaches all probes registered to the group.
 //
-// Must be called under normal conditions, not under Setup.
+// Must be called under normal conditions, not under [Setup].
 func (pg *ProbeGroup) Done() {
 	verifyUnlocked()
 	Setup(func() {
