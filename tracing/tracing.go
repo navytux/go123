@@ -208,6 +208,7 @@ import (
 // big tracing lock
 var traceMu    sync.Mutex
 var traceSetup int32      // for cheap protective checks whether we are running under Setup
+var traceSTW   int32      // when we are inside STW phase of setup
 
 // Setup runs f under conditions when it is safe to attach/detach probes.
 //
@@ -215,28 +216,94 @@ var traceSetup int32      // for cheap protective checks whether we are running 
 //
 //   - no other goroutine is attaching or detaching probes from tracepoints,
 //   - a tracepoint readers won't be neither confused nor raced by such adjustments.
-//
-// f is ran with the world stopped.
 func Setup(f func()) {
 	traceMu.Lock()
+	atomic.StoreInt32(&traceSetup, 1)
+	defer atomic.StoreInt32(&traceSetup, 0)
 	defer traceMu.Unlock()
 
-	xruntime.DoWithStoppedWorld(func() {
-		atomic.StoreInt32(&traceSetup, 1)
-		defer atomic.StoreInt32(&traceSetup, 0)
-		// we synchronized with everyone via stopping the world - there is now
-		// no other goroutines running to race with.
-		xruntime.RaceIgnoreBegin()
-		defer xruntime.RaceIgnoreEnd()
-
-		f()
-	})
+	setupq = nil
+	f()
+	xruntime.DoWithStoppedWorld(doSetupSTW)
+	doSetupAfterSTW()
+	setupq = nil // free memory for queued commands
 }
 
-// verifySetup makes sure tracing is running under Setup and panics otherwise.
+// Probe.Attach/Detach ran from under Setup queue commands to doSetupSTW that are executed under STW.
+// This way ability to run code under STW is not exposed to outside of tracing package.
+// It is also generally safer to execute under STW only minimal and very careful code.
+
+var setupq []*setupCmd
+
+type setupCmdType int
+const (
+	attachProbe = iota
+	detachProbe
+)
+
+type setupCmd struct {
+	typ   setupCmdType
+	pg    *ProbeGroup  // attach only
+	listp **Probe      // attach only
+	probe *Probe
+}
+
+func doSetupSTW() {
+	atomic.StoreInt32(&traceSTW, 1)
+	// we synchronized with everyone via stopping the world - there is now
+	// no other goroutines running to race with.
+	xruntime.RaceIgnoreBegin()
+
+	bad := false
+	for _, cmd := range setupq {
+		switch cmd.typ {
+		default:
+			bad = true
+			break
+		case attachProbe:
+			attachProbeSTW(cmd.listp, cmd.probe)
+		case detachProbe:
+			detachProbeSTW(cmd.probe)
+		}
+	}
+
+	xruntime.RaceIgnoreEnd()
+	atomic.StoreInt32(&traceSTW, 0)
+	if bad {
+		panic("bad setup command")
+	}
+}
+
+func doSetupAfterSTW() {
+	for _, cmd := range setupq {
+		switch cmd.typ {
+		default:
+			panic("bad setup command")
+		case attachProbe:
+			attachProbeAfterSTW(cmd.pg, cmd.probe)
+		case detachProbe:
+			//
+		}
+	}
+}
+
+// verifySetup makes sure tracing is running under Setup non-STW phase and panics otherwise.
 func verifySetup() {
 	if atomic.LoadInt32(&traceSetup) == 0 {
 		panic("must be run under tracing.Setup")
+	}
+	if atomic.LoadInt32(&traceSTW) == 1 {
+		panic("must be run outside STW phase of tracing.Setup")
+	}
+}
+
+// verifySetupSTW makes sure tracing is running under Setup STW phase and panics otherwise.
+func verifySetupSTW() {
+	if atomic.LoadInt32(&traceSetup) == 0 {
+		panic("must be run under tracing.Setup")
+	}
+	if atomic.LoadInt32(&traceSTW) == 0 {
+		panic("must be run inside STW phase of tracing.Setup")
 	}
 }
 
@@ -272,6 +339,16 @@ func (p *Probe) Next() *Probe {
 // Probe must be newly created.
 func AttachProbe(pg *ProbeGroup, listp **Probe, probe *Probe) {
 	verifySetup()
+	setupq = append(setupq, &setupCmd{
+		typ:   attachProbe,
+		pg:    pg,
+		listp: listp,
+		probe: probe,
+	})
+}
+
+func attachProbeSTW(listp **Probe, probe *Probe) {
+	verifySetupSTW()
 
 	if !(probe.prev == nil || probe.next == nil) {
 		panic("attach probe: probe is not newly created")
@@ -283,6 +360,10 @@ func AttachProbe(pg *ProbeGroup, listp **Probe, probe *Probe) {
 
 	last.next = probe
 	probe.prev = last
+}
+
+func attachProbeAfterSTW(pg *ProbeGroup, probe *Probe) {
+	verifySetup()
 
 	if pg != nil {
 		pg.Add(probe)
@@ -294,6 +375,14 @@ func AttachProbe(pg *ProbeGroup, listp **Probe, probe *Probe) {
 // Must be called under [Setup].
 func (p *Probe) Detach() {
 	verifySetup()
+	setupq = append(setupq, &setupCmd{
+		typ:   detachProbe,
+		probe: p,
+	})
+}
+
+func detachProbeSTW(p *Probe) {
+	verifySetupSTW()
 
 	// protection: already detached
 	if p.prev == nil {
