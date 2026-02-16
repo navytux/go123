@@ -1,4 +1,4 @@
-// Copyright (C) 2017-2025  Nexedi SA and Contributors.
+// Copyright (C) 2017-2026  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -21,6 +21,7 @@ package xruntime
 
 import (
 	"runtime"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -102,4 +103,57 @@ func TestStartStopTheWorld(t *testing.T) {
 	check_g_g2_running("g2 did not restarted after StartTheWorld")
 
 	atomic.StoreInt32(&stop, 1)
+}
+
+// verify that STW entry/exit is safe wrt simultaneous runtime·write .
+//
+// On go ≥ 1.23 doWithStoppedWorld works via installing hook into runtime.write .
+// This used to deadlock or crash in the presence of simultaneous calls to runtime.write
+// from other goroutines.
+func TestStartStopTheWorld_vs_runtimeWrite(t *testing.T) {
+	t.Skip("XFAIL: deadlocks and crashes: https://lab.nexedi.com/kirr/neo/-/commit/23823190#note_248356")
+
+	// problem is reproduced only with GOMAXPROCS ≥ 2
+	minprocs := 2
+	maxprocs := runtime.GOMAXPROCS(-1)
+	if minprocs < maxprocs {
+		minprocs = maxprocs
+	}
+	runtime.GOMAXPROCS(minprocs)
+	defer runtime.GOMAXPROCS(maxprocs)
+
+	// surrounding load that invokes runtime.write non-stop
+	var wg sync.WaitGroup
+	defer wg.Wait()
+	var done int32
+	defer atomic.StoreInt32(&done, 1)
+	ready := make(chan struct{})
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		runtime.LockOSThread()
+		close(ready)
+		defer println()
+
+		for atomic.LoadInt32(&done) == 0 {
+			print(".")
+		}
+
+	}()
+
+	<-ready
+
+	// enter/exit STW many times ...
+	nstw := 100
+	nrun := 0
+	for i := 0; i < nstw; i++ {
+		DoWithStoppedWorld(func() {
+			nrun += 1
+		})
+		runtime.Gosched()
+	}
+
+	if nrun != nstw {
+		t.Fatalf("DoWithStoppedWorld: ran given func %d times instead of %d", nrun, nstw)
+	}
 }

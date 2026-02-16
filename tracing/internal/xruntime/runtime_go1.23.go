@@ -65,6 +65,7 @@ func doWithStoppedWorld(f func()) {
 		// - after exiting STW but not yet restored overrideWrite to its saved value.
 		// wait till STW is over and retry the write
 		if fd != fdhook {
+			// FIXME not ok to use channels while under STW
 			<-STWdone
 			return runtime_write(fd, p, n)
 		}
