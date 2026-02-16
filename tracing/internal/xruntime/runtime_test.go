@@ -91,7 +91,7 @@ func TestStartStopTheWorld(t *testing.T) {
 	})
 
 	if nrun != 1 {
-		t.Fatalf("DoWithWorldStopped: ran given func %d times instead of exactly once", nrun)
+		t.Fatalf("DoWithStoppedWorld: ran given func %d times instead of exactly once", nrun)
 	}
 
 	if nδ != 0 {
