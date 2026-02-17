@@ -111,8 +111,6 @@ func TestStartStopTheWorld(t *testing.T) {
 // This used to deadlock or crash in the presence of simultaneous calls to runtime.write
 // from other goroutines.
 func TestStartStopTheWorld_vs_runtimeWrite(t *testing.T) {
-	t.Skip("XFAIL: deadlocks and crashes: https://lab.nexedi.com/kirr/neo/-/commit/23823190#note_248356")
-
 	// problem is reproduced only with GOMAXPROCS ≥ 2
 	minprocs := 2
 	maxprocs := runtime.GOMAXPROCS(-1)

@@ -1,5 +1,5 @@
-// Copyright (C) 2025  Nexedi SA and Contributors.
-//                     Kirill Smelkov <kirr@nexedi.com>
+// Copyright (C) 2025-2026  Nexedi SA and Contributors.
+//                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
 // it under the terms of the GNU General Public License version 3, or (at your
@@ -32,10 +32,11 @@ import (
 )
 
 //go:linkname runtime_overrideWrite runtime.overrideWrite
-//go:linkname runtime_write runtime.write
-
 var runtime_overrideWrite func(fd uintptr, p unsafe.Pointer, n int32) int32
-func runtime_write(fd uintptr, p unsafe.Pointer, n int32) int32
+
+//go:linkname runtime_write1 runtime.write1
+func runtime_write1(fd uintptr, p unsafe.Pointer, n int32) int32
+
 
 // go keeps func as one word, pointing to another struct{func_addr, this} with two words.
 // we need to swap that func's top word atomically and so we need to make sure we can really
@@ -54,8 +55,6 @@ func doWithStoppedWorld(f func()) {
 	withSTWMu.Lock()
 	defer withSTWMu.Unlock()
 
-	STWdone := make(chan struct{})
-
 	// foverrideWrite invokes f when write is called the first time	with special fd value
 	var ncall atomic.Int32
 	fdhook := uintptr(0);  fdhook -= 1  // -1U
@@ -63,11 +62,10 @@ func doWithStoppedWorld(f func()) {
 		// some call to write happens simultaneously to us when we are either:
 		// - entering STW but not yet there, or
 		// - after exiting STW but not yet restored overrideWrite to its saved value.
-		// wait till STW is over and retry the write
+		//
+		// a call to write could be also made from us from inside STW due to e.g. print or panic.
 		if fd != fdhook {
-			// FIXME not ok to use channels while under STW
-			<-STWdone
-			return runtime_write(fd, p, n)
+			return runtime_write1(fd, p, n)
 		}
 
 		// a call to write with special fd should happen only from under STW triggered by debug.WriteHeapDump below
@@ -98,7 +96,4 @@ func doWithStoppedWorld(f func()) {
 
 	// restore runtime.overrideWrite
 	atomic.StorePointer(pruntime_overrideWrite, oldWrite)
-
-	// STW is over, unpause waiting inflight writes to regular fds
-	close(STWdone)
 }
