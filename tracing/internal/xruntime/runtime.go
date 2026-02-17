@@ -1,4 +1,4 @@
-// Copyright (C) 2016-2025  Nexedi SA and Contributors.
+// Copyright (C) 2016-2026  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -28,6 +28,8 @@ package xruntime
 // Inside f it requires careful programming as many things that normally work lead to
 // fatal errors when the world is stopped - for example using timers would be
 // invalid, but adjusting plain values in memory is ok.
+//
+// f must be marked with go:nosplit .
 func DoWithStoppedWorld(f func()) {
 	doWithStoppedWorld(f)
 }

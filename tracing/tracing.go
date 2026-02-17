@@ -248,6 +248,7 @@ type setupCmd struct {
 	probe *Probe
 }
 
+//go:nosplit
 func doSetupSTW() {
 	atomic.StoreInt32(&traceSTW, 1)
 	// we synchronized with everyone via stopping the world - there is now
@@ -298,6 +299,7 @@ func verifySetup() {
 }
 
 // verifySetupSTW makes sure tracing is running under Setup STW phase and panics otherwise.
+//go:nosplit
 func verifySetupSTW() {
 	if atomic.LoadInt32(&traceSetup) == 0 {
 		panic("must be run under tracing.Setup")
@@ -347,6 +349,7 @@ func AttachProbe(pg *ProbeGroup, listp **Probe, probe *Probe) {
 	})
 }
 
+//go:nosplit
 func attachProbeSTW(listp **Probe, probe *Probe) {
 	verifySetupSTW()
 
@@ -381,6 +384,7 @@ func (p *Probe) Detach() {
 	})
 }
 
+//go:nosplit
 func detachProbeSTW(p *Probe) {
 	verifySetupSTW()
 

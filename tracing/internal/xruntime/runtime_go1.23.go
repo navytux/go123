@@ -48,35 +48,24 @@ func init() {
 	}
 }
 
+var withSTW struct {
+	mu    sync.Mutex
+	f     func()
 
-var withSTWMu sync.Mutex
+	ncall atomic.Int32
+}
 
 func doWithStoppedWorld(f func()) {
 	// protect multiple simultaneous doWithStoppedWorld from e.g. clobbering runtime_overrideWrite on restore
-	withSTWMu.Lock()
-	defer withSTWMu.Unlock()
+	withSTW.mu.Lock()
+	defer withSTW.mu.Unlock()
 
-	// foverrideWrite invokes f when write is called the first time	with special fd value
-	var ncall atomic.Int32
-	fdhook := uintptr(0);  fdhook -= 1  // -1U
-	foverrideWrite := func(fd uintptr, p unsafe.Pointer, n int32) int32 {
-		// some call to write happens simultaneously to us when we are either:
-		// - entering STW but not yet there, or
-		// - after exiting STW but not yet restored overrideWrite to its saved value.
-		//
-		// a call to write could be also made from us from inside STW due to e.g. print or panic.
-		if fd != fdhook {
-			return runtime_write1(fd, p, n)
-		}
+	// stwWrite invokes f when write is called the first time with special fd value
+	withSTW.f = f
+	withSTW.ncall.Store(0)
 
-		// a call to write with special fd should happen only from under STW triggered by debug.WriteHeapDump below
-		if ncall.Add(1) == 1 {
-			f()
-		}
-		return n
-	}
-
-	// swap runtime.overrideWrite to foverrideWrite
+	// swap runtime.overrideWrite to stwWrite
+	fstwWrite := stwWrite
 	pruntime_overrideWrite := (*unsafe.Pointer)(unsafe.Pointer(&runtime_overrideWrite))
 	var oldWrite unsafe.Pointer
 	var oldWriteObj func() // to keep oldWrite alive while our hook is installed instead
@@ -84,7 +73,7 @@ func doWithStoppedWorld(f func()) {
 		oldWrite = atomic.LoadPointer(pruntime_overrideWrite)
 		oldWriteObj = *(*func())(unsafe.Pointer(&oldWrite))
 		ok := atomic.CompareAndSwapPointer(pruntime_overrideWrite, oldWrite,
-			*((*unsafe.Pointer)((unsafe.Pointer(&foverrideWrite)))))
+			*((*unsafe.Pointer)((unsafe.Pointer(&fstwWrite)))))
 		if ok {
 			break
 		}
@@ -98,4 +87,30 @@ func doWithStoppedWorld(f func()) {
 	atomic.StorePointer(pruntime_overrideWrite, oldWrite)
 
 	runtime.KeepAlive(oldWriteObj)
+}
+
+const fdhook = ^uintptr(0) // -1U
+
+// stwWrite is installed into runtime.overrideWrite and is invoked by doWithStoppedWorld under STW.
+//
+// It must be go:nosplit because in STW context the code is running on system stack and growing
+// stack via runtime.morestack causes segfaults.
+//
+//go:nosplit
+func stwWrite(fd uintptr, p unsafe.Pointer, n int32) int32 {
+	// some call to write happens simultaneously to us when we are either:
+	// - entering STW but not yet there, or
+	// - after exiting STW but not yet restored overrideWrite to its saved value.
+	//
+	// a call to write could be also made from us from inside STW due to e.g. print or panic.
+	if fd != fdhook {
+		return runtime_write1(fd, p, n)
+	}
+
+	// a call to write with special fd should happen only from under STW triggered by debug.WriteHeapDump above
+	if withSTW.ncall.Add(1) == 1 {
+		// we are already running on systemstack
+		withSTW.f()
+	}
+	return n
 }

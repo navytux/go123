@@ -28,7 +28,7 @@ import (
 )
 
 func TestStartStopTheWorld(t *testing.T) {
-	var x, stop int32
+	var stop int32
 	ready := make(chan int)
 
 	// g2
@@ -39,7 +39,7 @@ func TestStartStopTheWorld(t *testing.T) {
 		ready <- 0
 
 		for atomic.LoadInt32(&stop) == 0 {
-			atomic.AddInt32(&x, 1)
+			atomic.AddInt32(&tstw.x, 1)
 
 			// XXX as of go19 tight loops are not preemptible (golang.org/issues/10958)
 			//     -> explicitly make sure we do not miss STW request.
@@ -53,12 +53,12 @@ func TestStartStopTheWorld(t *testing.T) {
 
 	// verify g and g2 are indeed running in parallel
 	check_g_g2_running := func(bad string) {
-		xprev := atomic.LoadInt32(&x)
+		xprev := atomic.LoadInt32(&tstw.x)
 		xnext := xprev
 		nδ := 0
 		tstart := time.Now()
 		for nδ < 100 && time.Now().Sub(tstart) < time.Second {
-			xnext = atomic.LoadInt32(&x)
+			xnext = atomic.LoadInt32(&tstw.x)
 			if xnext != xprev {
 				nδ += 1
 				xprev = xnext
@@ -73,30 +73,17 @@ func TestStartStopTheWorld(t *testing.T) {
 	check_g_g2_running("g and g2 are not running in parallel")
 
 	// now stop the world and for 1s make sure g2 is not running in parallel with us
-	nδ := 0
-	nrun := 0
-	tstart := time.Now()
-	DoWithStoppedWorld(func() {
-		nrun += 1
-		xprev := atomic.LoadInt32(&x)
-		xnext := xprev
-		for time.Now().Sub(tstart) < time.Second {
-			for i := 0; i < 100; i++ {
-				xnext = atomic.LoadInt32(&x)
-				if xnext != xprev {
-					nδ += 1
-					xprev = xnext
-				}
-			}
-		}
-	})
+	tstw.nδ = 0
+	tstw.nrun = 0
+	tstw.tstart = time.Now()
+	DoWithStoppedWorld(fstw)
 
-	if nrun != 1 {
-		t.Fatalf("DoWithStoppedWorld: ran given func %d times instead of exactly once", nrun)
+	if tstw.nrun != 1 {
+		t.Fatalf("DoWithStoppedWorld: ran given func %d times instead of exactly once", tstw.nrun)
 	}
 
-	if nδ != 0 {
-		t.Fatalf("g2 modified x at least %d times while the world was stopped", nδ)
+	if tstw.nδ != 0 {
+		t.Fatalf("g2 modified x at least %d times while the world was stopped", tstw.nδ)
 	}
 
 	// make sure g2 is now running again
@@ -104,6 +91,31 @@ func TestStartStopTheWorld(t *testing.T) {
 
 	atomic.StoreInt32(&stop, 1)
 }
+
+var tstw struct {
+	x int32
+
+	nδ     int
+	nrun   int
+	tstart time.Time
+}
+
+//go:nosplit
+func fstw() {
+	tstw.nrun += 1
+	xprev := atomic.LoadInt32(&tstw.x)
+	xnext := xprev
+	for time.Now().Sub(tstw.tstart) < time.Second {
+		for i := 0; i < 100; i++ {
+			xnext = atomic.LoadInt32(&tstw.x)
+			if xnext != xprev {
+				tstw.nδ += 1
+				xprev = xnext
+			}
+		}
+	}
+}
+
 
 // verify that STW entry/exit is safe wrt simultaneous runtime·write .
 //
@@ -143,15 +155,22 @@ func TestStartStopTheWorld_vs_runtimeWrite(t *testing.T) {
 
 	// enter/exit STW many times ...
 	nstw := 100
-	nrun := 0
+	tstw2.nrun = 0
 	for i := 0; i < nstw; i++ {
-		DoWithStoppedWorld(func() {
-			nrun += 1
-		})
+		DoWithStoppedWorld(fstw2)
 		runtime.Gosched()
 	}
 
-	if nrun != nstw {
-		t.Fatalf("DoWithStoppedWorld: ran given func %d times instead of %d", nrun, nstw)
+	if tstw2.nrun != nstw {
+		t.Fatalf("DoWithStoppedWorld: ran given func %d times instead of %d", tstw2.nrun, nstw)
 	}
+}
+
+var tstw2 struct {
+	nrun int
+}
+
+//go:nosplit
+func fstw2() {
+	tstw2.nrun += 1
 }

@@ -1,4 +1,4 @@
-// Copyright (C) 2016-2025  Nexedi SA and Contributors.
+// Copyright (C) 2016-2026  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -24,17 +24,18 @@ package xruntime
 
 import _ "unsafe"
 
-//go:linkname runtime_stopTheWorld runtime.stopTheWorld
+//go:linkname runtime_stopTheWorld  runtime.stopTheWorld
 //go:linkname runtime_startTheWorld runtime.startTheWorld
+//go:linkname runtime_systemstack   runtime.systemstack
 
 type stwReason uint8
 
 func runtime_stopTheWorld(reason stwReason)
 func runtime_startTheWorld()
-
+func runtime_systemstack(func())
 
 func doWithStoppedWorld(f func()) {
 	runtime_stopTheWorld(0) // cannot express arbitrary string reason as code; stop with "unknown"
 	defer runtime_startTheWorld()
-	f()
+	runtime_systemstack(f)
 }
