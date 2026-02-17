@@ -1,5 +1,5 @@
-// Copyright (C) 2016-2026  Nexedi SA and Contributors.
-//                          Kirill Smelkov <kirr@nexedi.com>
+// Copyright (C) 2026  Nexedi SA and Contributors.
+//                     Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
 // it under the terms of the GNU General Public License version 3, or (at your
@@ -17,26 +17,16 @@
 // See COPYING file for full licensing terms.
 // See https://www.nexedi.com/licensing for rationale and options.
 
-//go:build go1.21 && !go1.23
-// +build go1.21,!go1.23
+//go:build go1.19
+// +build go1.19
 
 package xruntime
 
-import _ "unsafe"
+import (
+	"runtime/debug"
+)
 
-//go:linkname runtime_stopTheWorld  runtime.stopTheWorld
-//go:linkname runtime_startTheWorld runtime.startTheWorld
-//go:linkname runtime_systemstack   runtime.systemstack
 
-type stwReason uint8
-
-func runtime_stopTheWorld(reason stwReason)
-func runtime_startTheWorld()
-func runtime_systemstack(func())
-
-func doWithStoppedWorld(f func()) {
-	runtime_stopTheWorld(0) // cannot express arbitrary string reason as code; stop with "unknown"
-	defer runtime_startTheWorld()
-	assertWriteBarrierDisabled()
-	runtime_systemstack(f)
+func setMemoryLimit(limit int64) int64 {
+	return debug.SetMemoryLimit(limit)
 }

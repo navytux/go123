@@ -109,6 +109,7 @@ func stwWrite(fd uintptr, p unsafe.Pointer, n int32) int32 {
 
 	// a call to write with special fd should happen only from under STW triggered by debug.WriteHeapDump above
 	if withSTW.ncall.Add(1) == 1 {
+		assertWriteBarrierDisabled()
 		// we are already running on systemstack
 		withSTW.f()
 	}

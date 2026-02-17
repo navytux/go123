@@ -35,5 +35,6 @@ func runtime_systemstack(func())
 func doWithStoppedWorld(f func()) {
 	runtime_stopTheWorld("xruntime.DoWithStoppedWorld")
 	defer runtime_startTheWorld()
+	assertWriteBarrierDisabled()
 	runtime_systemstack(f)
 }
