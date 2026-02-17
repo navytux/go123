@@ -36,7 +36,7 @@ func runtime_systemstack(func())
 
 func doWithStoppedWorld(f func()) {
 	runtime_stopTheWorld(0) // cannot express arbitrary string reason as code; stop with "unknown"
-	defer runtime_startTheWorld()
 	assertWriteBarrierDisabled()
 	runtime_systemstack(f)
+	runtime_startTheWorld()
 }
