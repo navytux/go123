@@ -23,6 +23,7 @@
 package xruntime
 
 import (
+	"runtime"
 	"runtime/debug"
 	"sync"
 	"sync/atomic"
@@ -88,7 +89,6 @@ func doWithStoppedWorld(f func()) {
 			break
 		}
 	}
-	_ = oldWriteObj
 
 	// debug.WriteHeapDump enters STW and invokes runtime.write many times inside
 	// use it as a way to enter STW and hook our code there
@@ -96,4 +96,6 @@ func doWithStoppedWorld(f func()) {
 
 	// restore runtime.overrideWrite
 	atomic.StorePointer(pruntime_overrideWrite, oldWrite)
+
+	runtime.KeepAlive(oldWriteObj)
 }
