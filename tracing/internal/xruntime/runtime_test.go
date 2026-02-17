@@ -29,6 +29,7 @@ import (
 
 func TestStartStopTheWorld(t *testing.T) {
 	var stop int32
+	defer atomic.StoreInt32(&stop, 1)
 	ready := make(chan int)
 
 	// g2
@@ -88,8 +89,6 @@ func TestStartStopTheWorld(t *testing.T) {
 
 	// make sure g2 is now running again
 	check_g_g2_running("g2 did not restarted after StartTheWorld")
-
-	atomic.StoreInt32(&stop, 1)
 }
 
 var tstw struct {

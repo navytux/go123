@@ -305,7 +305,7 @@ type mutex struct {
 }
 type lockRankStruct struct {
 }
-type uintreg uint          // FIXME wrong on amd64p32
+type sys_Uintreg uint      // FIXME wrong on amd64p32
 type m struct{}            // FIXME stub
 type sudog struct{}        // FIXME stub
 type timersBucket struct{} // FIXME stub

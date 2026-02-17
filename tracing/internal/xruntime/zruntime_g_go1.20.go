@@ -211,7 +211,7 @@ type atomic_Bool struct {
 	// Inherits atomic_noCopy from atomic_Uint8.
 	u atomic_Uint8
 }
-type uintreg uint          // FIXME wrong on amd64p32
+type sys_Uintreg uint      // FIXME wrong on amd64p32
 type m struct{}            // FIXME stub
 type sudog struct{}        // FIXME stub
 type timersBucket struct{} // FIXME stub

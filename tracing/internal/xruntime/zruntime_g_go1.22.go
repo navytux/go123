@@ -249,7 +249,7 @@ type traceSchedResourceState struct {
 	// GoStatus and GoCreate events to omit a sequence number (implicitly 0).
 	seq [2]uint64
 }
-type uintreg uint          // FIXME wrong on amd64p32
+type sys_Uintreg uint      // FIXME wrong on amd64p32
 type m struct{}            // FIXME stub
 type sudog struct{}        // FIXME stub
 type timersBucket struct{} // FIXME stub

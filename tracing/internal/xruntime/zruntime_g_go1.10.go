@@ -105,7 +105,7 @@ type gobuf struct {
 	pc   uintptr
 	g    guintptr
 	ctxt unsafe.Pointer
-	ret  uintreg
+	ret  sys_Uintreg
 	lr   uintptr
 	bp   uintptr // for GOEXPERIMENT=framepointer
 }
@@ -128,7 +128,7 @@ type timer struct {
 type guintptr uintptr
 type puintptr uintptr
 type muintptr uintptr
-type uintreg uint          // FIXME wrong on amd64p32
+type sys_Uintreg uint      // FIXME wrong on amd64p32
 type m struct{}            // FIXME stub
 type sudog struct{}        // FIXME stub
 type timersBucket struct{} // FIXME stub

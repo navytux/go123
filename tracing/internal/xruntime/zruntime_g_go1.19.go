@@ -202,7 +202,7 @@ type ancestorInfo struct {
 	gopc uintptr   // pc of go statement that created this goroutine
 }
 type goroutineProfileStateHolder atomic.Uint32
-type uintreg uint          // FIXME wrong on amd64p32
+type sys_Uintreg uint      // FIXME wrong on amd64p32
 type m struct{}            // FIXME stub
 type sudog struct{}        // FIXME stub
 type timersBucket struct{} // FIXME stub

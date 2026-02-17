@@ -126,7 +126,7 @@ typedef_g() {
 # typedef_g_fixed - print adjusted <g> & friends definitions
 typedef_g_fixed() {
 	typedef_g $1 | \
-		sed -e 's/\<sys.Uintreg\>/uintreg/;
+		sed -e 's/\<sys.Uintreg\>/sys_Uintreg/g;
 			s/\<noCopy\>/atomic_noCopy/g;
 			# there is no sync/atomic.Uint8
 			s/\<atomic.Uint8\>/atomic_Uint8/g;
@@ -135,7 +135,7 @@ typedef_g_fixed() {
 			s/\<atomic.Bool\>/atomic_Bool/g;
 			'
 
-	echo "type uintreg  uint	// FIXME wrong on amd64p32"
+	echo "type sys_Uintreg  uint	// FIXME wrong on amd64p32"
 	echo "type m struct {}		// FIXME stub"
 	echo "type sudog struct {}	// FIXME stub"
 

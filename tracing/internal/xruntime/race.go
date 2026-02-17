@@ -35,7 +35,7 @@ func RaceIgnoreBegin() {
 
 // RaceIgnoreEnd instructs race-detector to stop ignoring memory read/write events from current goroutine.
 //
-// NOTE runtime RaceEnable enables "sync" events, not memory read/write.
+// NOTE runtime.RaceEnable enables "sync" events, not memory read/write.
 func RaceIgnoreEnd() {
 	race.IgnoreEnd(getg().racectx)
 }

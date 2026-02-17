@@ -110,7 +110,7 @@ type gobuf struct {
 	pc   uintptr
 	g    guintptr
 	ctxt unsafe.Pointer // this has to be a pointer so that gc scans it
-	ret  uintreg
+	ret  sys_Uintreg
 	lr   uintptr
 	bp   uintptr // for GOEXPERIMENT=framepointer
 }
@@ -136,6 +136,6 @@ type stkbar struct {
 	savedLRPtr uintptr // location overwritten by stack barrier PC
 	savedLRVal uintptr // value overwritten at savedLRPtr
 }
-type uintreg uint   // FIXME wrong on amd64p32
-type m struct{}     // FIXME stub
-type sudog struct{} // FIXME stub
+type sys_Uintreg uint // FIXME wrong on amd64p32
+type m struct{}       // FIXME stub
+type sudog struct{}   // FIXME stub

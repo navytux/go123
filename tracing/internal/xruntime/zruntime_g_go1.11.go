@@ -106,7 +106,7 @@ type gobuf struct {
 	pc   uintptr
 	g    guintptr
 	ctxt unsafe.Pointer
-	ret  uintreg
+	ret  sys_Uintreg
 	lr   uintptr
 	bp   uintptr // for GOEXPERIMENT=framepointer
 }
@@ -135,7 +135,7 @@ type ancestorInfo struct {
 	goid int64     // goroutine id of this goroutine; original goroutine possibly dead
 	gopc uintptr   // pc of go statement that created this goroutine
 }
-type uintreg uint          // FIXME wrong on amd64p32
+type sys_Uintreg uint      // FIXME wrong on amd64p32
 type m struct{}            // FIXME stub
 type sudog struct{}        // FIXME stub
 type timersBucket struct{} // FIXME stub
