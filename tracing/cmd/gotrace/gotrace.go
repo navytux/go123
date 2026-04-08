@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2021  Nexedi SA and Contributors.
+// Copyright (C) 2018-2026  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -22,10 +22,10 @@ Gotrace is a program to support and interact with go tracing subsystem.
 
 Gotrace is a common entry to tracing and provides several subcommands:
 
-	gen	generate code according to tracing annotations and imports
-	list	lists tracepoints defined by a package
+	- gen	generate code according to tracing annotations and imports
+	- list	lists tracepoints defined by a package
 
-See package lab.nexedi.com/kirr/go123/tracing documentation on how to define
+See package [lab.nexedi.com/kirr/go123/tracing] documentation on how to define
 and use trace events in programs.
 
 TODO automatically turn every trace:event into an USDT probe so that they can
