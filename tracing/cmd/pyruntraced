@@ -271,8 +271,8 @@ def main():
     global gtracer
     fdtrace = argv[0]
     fdtrace = int(fdtrace)
-    ttx = os.fdopen(fdtrace, 'w')
-    trx = os.fdopen(fdtrace, 'r')
+    ttx = os.fdopen(fdtrace, 'w')   # stdio serializes fread vs fwrite on a file object
+    trx = os.fdopen(fdtrace, 'r')   # but we want them to be working simultaneously
     gtracer = Tracer(ttx, trx)
     argv = argv[1:]
 
