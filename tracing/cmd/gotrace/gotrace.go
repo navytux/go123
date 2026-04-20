@@ -42,7 +42,6 @@ import (
 	"flag"
 	"fmt"
 	"go/ast"
-	"go/build"
 	"go/parser"
 	"go/token"
 	"go/types"
@@ -56,7 +55,7 @@ import (
 	"strings"
 	"text/template"
 
-	"golang.org/x/tools/go/loader"
+	"golang.org/x/tools/go/packages"
 
 	"lab.nexedi.com/kirr/go123/prog"
 	"lab.nexedi.com/kirr/go123/xerr"
@@ -101,7 +100,7 @@ type traceImported struct {
 
 // Package represents tracing-related information about a package.
 type Package struct {
-	Pkgi *loader.PackageInfo // original non-augmented package
+	Pkgi *packages.Package // original non-augmented package
 
 	Eventv  []*traceEvent  // trace events this package defines
 	Importv []*traceImport // trace imports of other packages
@@ -131,7 +130,7 @@ func (p *Package) parseTraceEvent(srcfile *ast.File, pos token.Position, text st
 
 	// prepare artificial package with trace event definition as func declaration
 	buf := &Buffer{}
-	buf.emit("package %s", p.Pkgi.Pkg.Name())
+	buf.emit("package %s", p.Pkgi.Name)
 
 	// add all imports from original source file
 	// so that inside it all looks like as if it was in original source context
@@ -228,22 +227,21 @@ func (p *Package) parseTraceImport(pos token.Position, text string) (*traceImpor
 	return &traceImport{Pos: pos, PkgName: pkgname, PkgPath: pkgpath}, nil
 }
 
-// progImporter is types.Importer that imports packages from loaded loader.Program .
+// progImporter is types.Importer that imports packages from loaded Program .
 type progImporter struct {
-	prog *loader.Program
+	prog *Program
 }
 
 func (pi *progImporter) Import(path string) (*types.Package, error) {
-	pkgi := pi.prog.Package(path)
+	pkgi := pi.prog.Pkg[path]
 	if pkgi == nil {
 		return nil, fmt.Errorf("package %q not found", path)
 	}
-
-	return pkgi.Pkg, nil
+	return pkgi.Types, nil
 }
 
 // packageTrace returns tracing information about a package.
-func packageTrace(prog *loader.Program, pkgi *loader.PackageInfo) (*Package, error) {
+func packageTrace(prog *Program, pkgi *packages.Package) (*Package, error) {
 	// prepare Package with typechecker ready to typecheck trace files
 	// (to get trace func argument types)
 	tconf := &types.Config{
@@ -259,7 +257,7 @@ func packageTrace(prog *loader.Program, pkgi *loader.PackageInfo) (*Package, err
 
 	// tfset := token.NewFileSet() // XXX ok to separate or use original package fset?
 	tfset := prog.Fset
-	tpkg := types.NewPackage(pkgi.Pkg.Path(), pkgi.Pkg.Name())
+	tpkg := types.NewPackage(pkgi.PkgPath, pkgi.Name)
 	tinfo := &types.Info{Types: make(map[ast.Expr]types.TypeAndValue)}
 
 	p := &Package{
@@ -273,10 +271,10 @@ func packageTrace(prog *loader.Program, pkgi *loader.PackageInfo) (*Package, err
 	}
 
 	// preload original package files into tracing package
-	err := p.traceChecker.Files(p.Pkgi.Files)
+	err := p.traceChecker.Files(p.Pkgi.Syntax)
 	if err != nil {
 		// must not happen
-		panic(fmt.Errorf("%v: error rechecking original package: %v", pkgi.Pkg.Path(), err))
+		panic(fmt.Errorf("%v: error rechecking original package: %v", pkgi.PkgPath, err))
 	}
 
 	// go through files of the original package and process //trace: directives
@@ -284,7 +282,7 @@ func packageTrace(prog *loader.Program, pkgi *loader.PackageInfo) (*Package, err
 	// NOTE before go1.10 we don't process cgo files as there go/loader passes to us
 	// already preprocessed results with comments stripped, not original source.
 	// This problem was fixed for go1.10 in https://github.com/golang/go/commit/85c3ebf4.
-	for _, file := range pkgi.Files {                        // ast.File
+	for _, file := range pkgi.Syntax {                       // ast.File
 		for _, commgroup := range file.Comments {        // ast.CommentGroup
 			for _, comment := range commgroup.List { // ast.Comment
 				pos := prog.Fset.Position(comment.Slash)
@@ -578,138 +576,185 @@ func removeFile(path string) error {
 }
 
 // Program represents loaded program for tracepoint analysis.
-//
-// It is generalization of loader.Program due to loader not allowing to
-// construct programs incrementally.
 type Program struct {
-	// list of loader.Programs in use
-	//
-	// We generally need to have several programs because a package can
-	// trace:import another package which is not otherwise imported by
-	// original program.
-	//
-	// Since go/loader does not support incrementally augmenting loaded
-	// program with more packages, we work-around it with having several
-	// progs.
-	progv []*loader.Program
+	Pkg  map[string]*packages.Package
+	Fset *token.FileSet
 
-	// config for loading programs
-	loaderConf *loader.Config
+	// config for loading the program
+	loaderConf *packages.Config
 }
 
-// NewProgram constructs new empty Program ready to load packages according to specified build context.
-func NewProgram(ctxt *build.Context, cwd string) *Program {
-	// adjust build context to filter-out ztrace* files when discovering packages
+// NewProgram constructs new empty Program ready to load packages.
+func NewProgram(cwd string) *Program {
+	p := &Program{
+		Pkg:  map[string]*packages.Package{},
+		Fset: token.NewFileSet(),
+	}
+	p.loaderConf = &packages.Config{
+		Mode:    packages.LoadAllSyntax,
+		Dir:     cwd,
+		Fset:    p.Fset,
+		Overlay: map[string][]byte{},
+	}
+
+	return p
+}
+
+// load loads specified package ignoring ztrace* files and typechecking errors of top-level package.
+func (p *Program) load(pkgpath string) ([]*packages.Package, error) {
+	// adjust loading context to filter-out ztrace* files when discovering packages
 	//
 	// we don't load what should be generated by us for 2 reasons:
 	// - code generated could be wrong with older version of the
 	//   tool - it should not prevent from regenerating.
 	// - generated code imports packages which might be not there
 	//   yet in gopath (lab.nexedi.com/kirr/go123/tracing)
-	ctxtReadDir := ctxt.ReadDir
-	if ctxtReadDir == nil {
-		ctxtReadDir = ioutil.ReadDir
+	//
+	// with go/loader we were overriding ReadDir and filtering-out ztrace*.
+	// with go/packages there is no way to override ReadDir so we use
+	// overlaying to stub almost empty files instead ztrace*. Unfortunately
+	// there is no way to do whiteout via overlaying.
+
+	// discover list of files in top package and filter-out ztrace*
+	zconf := &packages.Config{
+		Mode:  packages.LoadImports | packages.NeedDeps,
+		Dir:   p.loaderConf.Dir,
+		Tests: true,
 	}
-	ctxtNoZTrace := *ctxt
-	ctxtNoZTrace.ReadDir = func(dir string) ([]os.FileInfo, error) {
-		fv, err := ctxtReadDir(dir)
-		okv := fv[:0]
-		for _, f := range fv {
-			if !strings.HasPrefix(f.Name(), "ztrace") {
-				okv = append(okv, f)
+	pkgs, err := packages.Load(zconf, pkgpath)
+	if err != nil {
+		return nil, err
+	}
+	// NOTE no packages.PrintErrors() - we only need list of go files even if they have errors
+	packages.Visit(pkgs, nil, func(pkgi *packages.Package) {
+		zstub := fmt.Sprintf("package %s\n", pkgi.Name) // just "" would cause syntax error
+		for _, f := range pkgi.GoFiles {
+			if strings.HasPrefix(filepath.Base(f), "ztrace") {
+				p.loaderConf.Overlay[f] = []byte(zstub)
 			}
 		}
-		return okv, err
-	}
+	})
 
-	p := &Program{}
-	p.loaderConf = &loader.Config{
-		ParserMode:          parser.ParseComments,
-		TypeCheckFuncBodies: func(path string) bool { return false },
-		Build:               &ctxtNoZTrace,
-		Cwd:                 cwd,
-	}
+	pkgs, err = packages.Load(p.loaderConf, pkgpath)
 
-	return p
+	// loaded packages are expected to have errors because they might use should-be
+	// generated trace* functions and those functions might be not generated yet.
+	// We clean those errors. Packages related to tracing will be retypechecked by
+	// packageTrace with IgnoreFuncBodies.
+	packages.Visit(pkgs, nil, func(pkgi *packages.Package) {
+		pkgi.Errors = nil
+	})
+
+	return pkgs, err
 }
 
 // Import imports a package and returns associated package info and program
 // under which it was loaded.
-func (p *Program) Import(pkgpath string) (prog *loader.Program, pkgi *loader.PackageInfo, err error) {
+func (p *Program) Import(pkgpath string) (pkgi *packages.Package, err error) {
 	// let's see - maybe it is already there
-	for _, prog := range p.progv {
-		pkgi := prog.Package(pkgpath)
-		if pkgi != nil {
-			return prog, pkgi, nil
-		}
+	pkgi, ok := p.Pkg[pkgpath]
+	if ok {
+		return pkgi, nil
 	}
 
 	// not found - we have to load new program rooted at pkgpath
-	p.loaderConf.ImportPkgs = nil
-	p.loaderConf.Import(pkgpath)
-
-	prog, err = p.loaderConf.Load()
+	p.loaderConf.Tests = false
+	pkgs, err := p.load(pkgpath)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
+	}
+	if packages.PrintErrors(pkgs) > 0 {
+		return nil, fmt.Errorf("%s: load error", pkgpath)
 	}
 
-	if !(len(prog.Created) == 0 && len(prog.Imported) == 1) {
+	if len(pkgs) != 1 {
 		panic("import")
 	}
+	pkgi = pkgs[0]
 
-	p.progv = append(p.progv, prog)
-	pkgi = prog.InitialPackages()[0]
-	return prog, pkgi, nil
+	p.addPkg(pkgi)
+
+	return pkgi, nil
 }
 
 // ImportWithTests imports a package augmented with code from _test.go files +
 // imports external test package (if present).
-func (p *Program) ImportWithTests(pkgpath string) (prog *loader.Program, pkgi *loader.PackageInfo, xtestPkgi *loader.PackageInfo, err error) {
+func (p *Program) ImportWithTests(pkgpath string) (pkgi, xtestPkgi *packages.Package, err error) {
 	// NOTE always reimporting not to interfere with regular imports
-	p.loaderConf.ImportPkgs = nil
-	p.loaderConf.ImportWithTests(pkgpath)
-
-	prog, err = p.loaderConf.Load()
+	clear(p.Pkg)
+	p.loaderConf.Tests = true
+	pkgs, err := p.load(pkgpath)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
+	}
+	if packages.PrintErrors(pkgs) > 0 {
+		return nil, nil, fmt.Errorf("%s: load error", pkgpath)
 	}
 
-	if len(prog.Imported) != 1 {
-		panic("import with tests")
+	// with Tests=true Load returns 1-4 packages:
+	//
+	//	pkg			the package without test
+	//	pkg [pkg.test]		pkg + tests of the package, if tests are there
+	//	pkg_test [pkg.test]	xtests of the package,      if xtests are there
+	//	pkg.test 		main package to run test drivers, if tests or xtests are there
+	l := len(pkgs)
+	if !(l >= 1 && l <= 4) {
+		panic("import")
 	}
 
-	if len(prog.Created) > 0 {
-		xtestPkgi = prog.Created[0]
-	}
-	for _, pkgi = range prog.Imported {
+	pkgi = pkgs[0]
+	pkgpath = pkgi.PkgPath // e.g. . -> path/to/pkg
+
+	var testPkgi *packages.Package
+	for _, p := range pkgs[1:] {
+		if p.ID == fmt.Sprintf("%s [%s.test]", pkgpath, pkgpath) {
+			testPkgi = p
+		}
+		if p.ID == fmt.Sprintf("%s_test [%s.test]", pkgpath, pkgpath) {
+			xtestPkgi = p
+		}
 	}
 
-	return prog, pkgi, xtestPkgi, nil
+	if testPkgi != nil {
+		pkgi = testPkgi
+	}
+
+	p.addPkg(pkgi)
+	if xtestPkgi != nil {
+		p.addPkg(xtestPkgi)
+	}
+
+	return pkgi, xtestPkgi, nil
+}
+
+func (p *Program) addPkg(pkgi *packages.Package) {
+	_, already := p.Pkg[pkgi.PkgPath]
+	if already {
+		return
+	}
+	p.Pkg[pkgi.PkgPath] = pkgi
+
+	for _, pkgi := range pkgi.Imports {
+		p.addPkg(pkgi)
+	}
 }
 
 // ---- `gotrace gen` ----
 
 // tracegen generates code according to tracing directives in a package @ pkgpath.
 //
-// ctxt is build context for discovering packages
 // cwd is "current" directory for resolving local imports (e.g. packages like "./some/package")
-func tracegen(pkgpath string, ctxt *build.Context, cwd string) error {
-	P := NewProgram(ctxt, cwd)
+func tracegen(pkgpath string, cwd string) error {
+	P := NewProgram(cwd)
 
-	lprog, pkgi, xtestPkgi, err := P.ImportWithTests(pkgpath)
+	pkgi, xtestPkgi, err := P.ImportWithTests(pkgpath)
 	if err != nil {
 		return err
 	}
-
-	// determine package directory
-	if len(pkgi.Files) == 0 {
-		return fmt.Errorf("package %s is empty", pkgi.Pkg.Path())
-	}
-
-	pkgdir := filepath.Dir(lprog.Fset.File(pkgi.Files[0].Pos()).Name())
+	pkgdir := pkgi.Dir
 
 	// tracing info for this specified package
-	tpkg, err := packageTrace(lprog, pkgi)
+	tpkg, err := packageTrace(P, pkgi)
 	if err != nil {
 		return err // XXX err ctx
 	}
@@ -723,7 +768,7 @@ func tracegen(pkgpath string, ctxt *build.Context, cwd string) error {
 	// also handle xtest package
 	xtestTpkg := &Package{} // dummy package with empty .Eventv & .Importv
 	if xtestPkgi != nil {
-		xtestTpkg, err = packageTrace(lprog, xtestPkgi)
+		xtestTpkg, err = packageTrace(P, xtestPkgi)
 		if err != nil {
 			return err // XXX err ctx
 		}
@@ -751,7 +796,7 @@ func tracegen1(P *Program, tpkg *Package, pkgdir string, kind string) error {
 		// prologue
 		prologue := &Buffer{}
 		prologue.WriteString(magic)
-		prologue.emit("\npackage %v", tpkg.Pkgi.Pkg.Name())
+		prologue.emit("\npackage %v", tpkg.Pkgi.Name)
 		prologue.emit("// code generated for tracepoints")
 		prologue.emit("\nimport (")
 		prologue.emit("\t%q", "lab.nexedi.com/kirr/go123/tracing")
@@ -788,19 +833,19 @@ func tracegen1(P *Program, tpkg *Package, pkgdir string, kind string) error {
 		for _, timport := range tpkg.Importv {
 			text.emit("\n// traceimport: %s", timport.ImportSpec())
 
-			impProg, impPkgi, err := P.Import(timport.PkgPath)
+			impPkgi, err := P.Import(timport.PkgPath)
 			if err != nil {
 				return fmt.Errorf("%v: error trace-importing %s: %v", timport.Pos, timport.PkgPath, err)
 			}
 
 			// set name of the package if it was not explicitly specified
 			if timport.PkgName == "" {
-				timport.PkgName = impPkgi.Pkg.Name()
+				timport.PkgName = impPkgi.Name
 			} else {
 				importedAs[timport.PkgPath] = timport.PkgName
 			}
 
-			impPkg, err := packageTrace(impProg, impPkgi)
+			impPkg, err := packageTrace(P, impPkgi)
 			if err != nil {
 				return err // XXX err ctx
 			}
@@ -828,7 +873,7 @@ func tracegen1(P *Program, tpkg *Package, pkgdir string, kind string) error {
 				importedEvent := traceImported{
 					traceEvent:  event,
 					ImportSpec:  timport,
-					ImporterPkg: tpkg.Pkgi.Pkg,
+					ImporterPkg: tpkg.Pkgi.Types,
 					ImportedAs:  importedAs,
 				}
 				err = traceEventImportTmpl.Execute(text, importedEvent)
@@ -847,7 +892,7 @@ func tracegen1(P *Program, tpkg *Package, pkgdir string, kind string) error {
 			needPkg.Delete("unsafe")
 		}
 
-		needPkg.Delete(tpkg.Pkgi.Pkg.Path()) // our pkg - no need to import
+		needPkg.Delete(tpkg.Pkgi.PkgPath) // our pkg - no need to import
 		needPkgv := needPkg.Itemv()
 		if len(needPkgv) > 0 {
 			prologue.emit("")
@@ -892,8 +937,8 @@ func tracegen1(P *Program, tpkg *Package, pkgdir string, kind string) error {
 // traceExport returns signatures of all tracing-related exports of a package
 // in canonical order as would be seen from universe scope.
 func traceExport(tpkg *Package, kind string) []byte {
-	pkgpath := tpkg.Pkgi.Pkg.Path()
-	pkgname := tpkg.Pkgi.Pkg.Name()
+	pkgpath := tpkg.Pkgi.PkgPath
+	pkgname := tpkg.Pkgi.Name
 
 	exported := &Buffer{}
 	exported.emit("%q %q", pkgpath, kind)
@@ -951,7 +996,7 @@ func genMain(argv []string) {
 		prog.Fatal(err)
 	}
 
-	err = tracegen(pkgpath, &build.Default, cwd)
+	err = tracegen(pkgpath, cwd)
 	if err != nil {
 		prog.Fatal(err)
 	}
@@ -962,25 +1007,25 @@ func genMain(argv []string) {
 
 // tracelist lists trace-events defined by a package @ pkgpath.
 //
-// ctxt and cwd are tunables for discovering packages. See tracegen for details.
+// cwd is tunable for discovering packages. See tracegen for details.
 //
 // TODO support listing by pkgspec (e.g. "./...")
-func tracelist(w io.Writer, pkgpath string, ctxt *build.Context, cwd string) error {
-	P := NewProgram(ctxt, cwd)
+func tracelist(w io.Writer, pkgpath string, cwd string) error {
+	P := NewProgram(cwd)
 
 	// NOTE only listing trace-events provided by main package, not tests or xtest
-	lprog, pkgi, err := P.Import(pkgpath)
+	pkgi, err := P.Import(pkgpath)
 	if err != nil {
 		return err
 	}
 
-	tpkg, err := packageTrace(lprog, pkgi)
+	tpkg, err := packageTrace(P, pkgi)
 	if err != nil {
 		return err // XXX err ctx
 	}
 
 	for _, event := range tpkg.Eventv {
-		_, err = fmt.Fprintf(w, "%s:%s\n", event.Pkgt.Pkgi.Pkg.Path(), event.Name)
+		_, err = fmt.Fprintf(w, "%s:%s\n", event.Pkgt.Pkgi.PkgPath, event.Name)
 		if err != nil {
 			return err
 		}
@@ -1019,7 +1064,7 @@ func listMain(argv []string) {
 		prog.Fatal(err)
 	}
 
-	err = tracelist(os.Stdout, pkgpath, &build.Default, cwd)
+	err = tracelist(os.Stdout, pkgpath, cwd)
 	if err != nil {
 		prog.Fatal(err)
 	}

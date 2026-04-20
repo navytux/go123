@@ -1,4 +1,4 @@
-// Copyright (C) 2017-2021  Nexedi SA and Contributors.
+// Copyright (C) 2017-2026  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -27,7 +27,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"syscall"
 	"testing"
@@ -148,13 +147,13 @@ func TestGoTrace(t *testing.T) {
 	xprepareTree("testdata", work, TreePrepareWork)
 
 	// test build context with GOPATH set to work tree
-	var tBuildCtx = &build.Context{
-		GOARCH:     "amd64",
-		GOOS:       "linux",
-		GOROOT:     runtime.GOROOT(),
-		GOPATH:     work,
-		CgoEnabled: true,
-		Compiler:   runtime.Compiler,
+	// TODO also test in module mode
+	t.Setenv("GOPATH", work)
+	t.Setenv("GO111MODULE", "off")
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	// XXX autodetect (go list ?)
@@ -166,7 +165,7 @@ func TestGoTrace(t *testing.T) {
 
 	for _, tpkg := range testv {
 		// verify `gotrace gen`
-		err = tracegen(tpkg, tBuildCtx, "" /* = local imorts disabled */)
+		err = tracegen(tpkg, cwd)
 		if err != nil {
 			t.Errorf("%v: %v", tpkg, err)
 		}
@@ -182,7 +181,7 @@ func TestGoTrace(t *testing.T) {
 
 		// verify `gotrace list`
 		var tlistBuf bytes.Buffer
-		err = tracelist(&tlistBuf, tpkg, tBuildCtx, "" /* = local imports disabled */)
+		err = tracelist(&tlistBuf, tpkg, cwd)
 		if err != nil {
 			t.Fatalf("%v: %v", tpkg, err)
 		}
