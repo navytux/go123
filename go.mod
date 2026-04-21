@@ -1,6 +1,6 @@
 module lab.nexedi.com/kirr/go123
 
-go 1.14
+go 1.23.0
 
 require (
 	crawshaw.io/sqlite v0.3.2
