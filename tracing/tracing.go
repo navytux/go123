@@ -182,7 +182,7 @@ usually with the help of //go:generate. For example:
 
 	package hello
 
-	//go:generate gotrace gen .
+	//go:generate go tool gotrace gen .
 
 	//trace:event ...
 

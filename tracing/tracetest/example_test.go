@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2025  Nexedi SA and Contributors.
+// Copyright (C) 2018-2026  Nexedi SA and Contributors.
 //                          Kirill Smelkov <kirr@nexedi.com>
 //
 // This program is free software: you can Use, Study, Modify and Redistribute
@@ -22,7 +22,7 @@
 // It also serves as set of testcases for tracetest itself.
 package tracetest_test
 
-//go:generate gotrace gen .
+//go:generate go tool gotrace gen .
 
 import (
 	"fmt"

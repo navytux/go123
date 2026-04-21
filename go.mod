@@ -11,4 +11,6 @@ require (
 	golang.org/x/tools v0.36.0
 )
 
+tool lab.nexedi.com/kirr/go123/tracing/cmd/gotrace
+
 require golang.org/x/mod v0.27.0 // indirect
