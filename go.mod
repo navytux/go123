@@ -11,7 +11,4 @@ require (
 	golang.org/x/tools v0.36.0
 )
 
-require (
-	golang.org/x/mod v0.27.0 // indirect
-	golang.org/x/sys v0.35.0 // indirect
-)
+require golang.org/x/mod v0.27.0 // indirect
